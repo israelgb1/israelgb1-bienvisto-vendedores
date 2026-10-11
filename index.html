@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bien Visto · Vendedores</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 311 203' role='img' aria-labelledby='t'><g transform='translate(-10 -41)'><path fill='%230E6B5C' d='M62 163 L62 78 A16 16 0 0 0 30 78 L30 163 A16 16 0 0 0 62 163 Z'/><path fill='%230E6B5C' fill-rule='evenodd' d='M30 163 A59 59 0 1 1 148 163 A59 59 0 1 1 30 163 Z M62 163 A27 27 0 1 0 116 163 A27 27 0 1 0 62 163 Z'/><path fill='%23F2A71B' d='M159.53 150 L197.35 215.5 A15 15 0 0 0 223.33 215.5 L298.96 84.5 A15 15 0 0 0 272.98 69.5 L210.34 178 L185.51 135 A15 15 0 0 0 159.53 150 Z'/></g></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..600&family=Figtree:wght@400..600&display=swap" rel="stylesheet">
+<style>
+/* Tokens del brandbook v1.2 */
+:root{
+  --verde-visto:#0E6B5C;
+  --ambar-resena:#F2A71B;
+  --ambar-texto:#8A5A00;
+  --tinta:#12302B;
+  --tinta-suave:#4A5F59;
+  --crema:#FBF6EC;
+  --menta:#E7F0EC;
+  --borde-fuerte:#6B897E;
+  --borde:#CFDDD6;
+  --error:#B3261E;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--crema);color:var(--tinta);font-family:Figtree,system-ui,sans-serif;font-weight:400;font-size:17px;line-height:28px}
+body{min-height:100vh;overflow-x:hidden}
+main{max-width:420px;margin:0 auto;padding:32px 16px;text-align:left}
+.cabecera{margin:0 0 4px}
+.isologo{display:block;width:220px;max-width:100%;height:auto}
+.etiqueta{font-family:Figtree,system-ui,sans-serif;font-size:13px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ambar-texto);margin:0 0 24px}
+h1,h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:600;font-size:36px;line-height:42px;margin:0 0 16px;color:var(--tinta);font-style:normal;text-decoration:none}
+h1 .segunda{color:var(--verde-visto)}
+label{display:block;font-family:Figtree,system-ui,sans-serif;font-size:14px;line-height:20px;color:var(--tinta-suave);margin:0 0 6px;font-weight:600}
+input{width:100%;font:inherit;font-size:16px;padding:12px;border:1px solid var(--borde-fuerte);border-radius:10px;background:#fff;color:var(--tinta)}
+input:focus{outline:3px solid var(--verde-visto);outline-offset:1px}
+button{font-family:Figtree,system-ui,sans-serif;font-weight:600;font-size:16px;line-height:24px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--verde-visto);color:var(--crema);cursor:pointer;margin-top:12px}
+button:focus-visible{outline:3px solid var(--ambar-resena);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+button.sec{background:transparent;color:var(--verde-visto);border:1px solid var(--borde-fuerte)}
+.msg{min-height:24px;margin:16px 0 0;font-family:Figtree,system-ui,sans-serif;font-size:16px;line-height:24px;color:var(--tinta-suave)}
+.msg.err{color:var(--error)}
+.msg.ok{color:var(--tinta-suave)}
+.guia{margin:0 0 24px;color:var(--tinta);font-size:17px;line-height:28px}
+.guia ol{margin:8px 0 0;padding-left:20px}
+.guia li{margin:4px 0}
+.paso[hidden]{display:none}
+.bloque{margin-top:8px}
+.fila{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.enlace{background:none;border:0;color:var(--verde-visto);padding:0;width:auto;margin:0;font-size:14px;line-height:20px;font-weight:600;text-decoration:underline}
+.pie{margin-top:40px;padding-top:20px;border-top:1px solid var(--borde);font-family:Figtree,system-ui,sans-serif;font-size:14px;line-height:20px;color:var(--tinta-suave);text-align:center}
+.pie a{color:var(--verde-visto);font-weight:600}
+.pie .boton-soporte{display:inline-block;text-align:center;text-decoration:none;width:auto;padding:10px 16px;margin-top:12px;background:transparent;color:var(--verde-visto);border:1px solid var(--borde-fuerte);border-radius:10px;font-size:15px}
+.enlace:disabled{color:var(--tinta-suave);text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <header class="cabecera">
+    <svg class="isologo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 711.85 156.25" role="img" aria-labelledby="t"><title>Bien Visto</title><rect width="711.85" height="156.25" rx="78.12" fill="#FBF6EC"/><g transform="translate(22.49 4.52) scale(0.52)"><path fill="#0E6B5C" d="M62 163 L62 78 A16 16 0 0 0 30 78 L30 163 A16 16 0 0 0 62 163 Z"/><path fill="#0E6B5C" fill-rule="evenodd" d="M30 163 A59 59 0 1 1 148 163 A59 59 0 1 1 30 163 Z M62 163 A27 27 0 1 0 116 163 A27 27 0 1 0 62 163 Z"/><path fill="#F2A71B" d="M159.53 150 L197.35 215.5 A15 15 0 0 0 223.33 215.5 L298.96 84.5 A15 15 0 0 0 272.98 69.5 L210.34 178 L185.51 135 A15 15 0 0 0 159.53 150 Z"/></g><g transform="translate(212.08 118.25) scale(0.5)"><path fill="#12302B" transform="translate(0 0)" d="M0 -59V-148.68C0 -155.86 5.82 -161.68 13 -161.68C20.18 -161.68 26 -155.86 26 -148.68V-108.97C35.91 -115.92 47.98 -120 61 -120C94.69 -120 122 -92.69 122 -59C122 -25.31 94.69 2 61 2C27.31 2 0 -25.31 0 -59ZM26.78 -59C26.78 -40.1 42.1 -24.78 61 -24.78C79.9 -24.78 95.22 -40.1 95.22 -59C95.22 -77.9 79.9 -93.22 61 -93.22C42.1 -93.22 26.78 -77.9 26.78 -59Z"/><path fill="#12302B" transform="translate(137.84 0)" d="M26 -11.8C26 -4.62 20.18 1.2 13 1.2C5.82 1.2 0 -4.62 0 -11.8V-106.2C0 -113.38 5.82 -119.2 13 -119.2C20.18 -119.2 26 -113.38 26 -106.2ZM-2.08 -146.5C-2.08 -154.83 4.67 -161.58 13 -161.58C21.33 -161.58 28.08 -154.83 28.08 -146.5C28.08 -138.17 21.33 -131.42 13 -131.42C4.67 -131.42 -2.08 -138.17 -2.08 -146.5Z"/><path fill="#12302B" transform="translate(179.69 0)" d="M121.11 -69.39C122.39 -61.99 122.29 -54.41 120.82 -47.04H28.94C30.71 -42.28 33.57 -37.86 37.44 -34.18C48.76 -23.44 65.9 -21.72 79.13 -29.98C85.4 -33.9 93.66 -32 97.58 -25.73C101.51 -19.45 99.6 -11.19 93.33 -7.27C69.75 7.47 39.19 4.39 19.01 -14.75C-1.16 -33.89 -5.83 -64.25 7.65 -88.57C21.13 -112.89 49.35 -125.02 76.27 -118.06C99.78 -111.98 117.1 -92.69 121.11 -69.39ZM93.07 -70.96C89.24 -81.2 80.63 -89.27 69.57 -92.13C54.47 -96.04 38.64 -89.24 31.07 -75.6C30.24 -74.09 29.52 -72.54 28.93 -70.96H93.07Z"/><path fill="#12302B" transform="translate(312.49 0)" d="M26 -11.8C26 -4.62 20.18 1.2 13 1.2C5.82 1.2 0 -4.62 0 -11.8V-106.2C0 -113.38 5.82 -119.2 13 -119.2C17.76 -119.2 21.92 -116.64 24.19 -112.83C31.72 -117.38 40.55 -120 50 -120C77.61 -120 100 -97.61 100 -70V-11.8C100 -4.62 94.18 1.2 87 1.2C79.82 1.2 74 -4.62 74 -11.8V-70C74 -83.25 63.25 -94 50 -94C36.75 -94 26 -83.25 26 -70Z"/><path fill="#12302B" transform="translate(456.15 0)" d="M1.45 -101.05 52.49 -5.05C54.63 -1.02 58.83 1.5 63.4 1.5C67.96 1.5 72.16 -1.02 74.3 -5.05L125.34 -101.05C128.54 -107.07 126.26 -114.55 120.24 -117.75C114.21 -120.96 106.73 -118.67 103.53 -112.65L63.39 -37.16L23.25 -112.65C19.97 -118.51 12.6 -120.67 6.68 -117.51C0.75 -114.36 -1.57 -107.05 1.45 -101.05Z"/><path fill="#12302B" transform="translate(593.63 0)" d="M26 -11.8C26 -4.62 20.18 1.2 13 1.2C5.82 1.2 0 -4.62 0 -11.8V-106.2C0 -113.38 5.82 -119.2 13 -119.2C20.18 -119.2 26 -113.38 26 -106.2ZM-2.08 -146.5C-2.08 -154.83 4.67 -161.58 13 -161.58C21.33 -161.58 28.08 -154.83 28.08 -146.5C28.08 -138.17 21.33 -131.42 13 -131.42C4.67 -131.42 -2.08 -138.17 -2.08 -146.5Z"/><path fill="#12302B" transform="translate(633.81 0)" d="M67.33 -104.48C71.15 -98.82 69.66 -91.15 64 -87.33C58.34 -83.51 50.67 -85 46.85 -90.66C44.05 -94.82 38.7 -96.43 34.07 -94.5C29.44 -92.57 26.82 -87.64 27.81 -82.72C28.79 -77.81 33.11 -74.27 38.12 -74.27L38.13 -74.27C56.63 -74.27 72.47 -60.98 75.68 -42.76C78.89 -24.54 68.56 -6.64 51.17 -0.31C33.79 6.02 14.36 -1.05 5.11 -17.07C1.76 -22.97 3.8 -30.47 9.68 -33.86C15.55 -37.25 23.06 -35.27 26.5 -29.42C29.76 -23.78 36.6 -21.29 42.72 -23.52C48.85 -25.75 52.49 -32.06 51.35 -38.47C50.22 -44.89 44.65 -49.57 38.13 -49.57C21.35 -49.57 6.89 -61.41 3.59 -77.87C0.3 -94.33 9.07 -110.82 24.56 -117.29C40.05 -123.76 57.95 -118.4 67.33 -104.48Z"/><path fill="#12302B" transform="translate(721.98 0)" d="M2 -95.28C-4.61 -95.28 -9.96 -100.63 -9.96 -107.24C-9.96 -113.85 -4.61 -119.2 2 -119.2H16.22C17.35 -125.23 22.64 -129.8 29 -129.8C35.36 -129.8 40.65 -125.23 41.78 -119.2H63C69.61 -119.2 74.96 -113.85 74.96 -107.24C74.96 -100.63 69.61 -95.28 63 -95.28H42V-43.8C42 -33.31 50.51 -24.8 61 -24.8C68.18 -24.8 74 -18.98 74 -11.8C74 -4.62 68.18 1.2 61 1.2C36.15 1.2 16 -18.95 16 -43.8V-95.28Z"/><path fill="#12302B" transform="translate(793.55 0)" d="M0 -59C0 -92.69 27.31 -120 61 -120C94.69 -120 122 -92.69 122 -59C122 -25.31 94.69 2 61 2C27.31 2 0 -25.31 0 -59ZM26.78 -59C26.78 -40.1 42.1 -24.78 61 -24.78C79.9 -24.78 95.22 -40.1 95.22 -59C95.22 -77.9 79.9 -93.22 61 -93.22C42.1 -93.22 26.78 -77.9 26.78 -59Z"/></g></svg>
+  </header>
+  <p class="etiqueta">Acceso para vendedores</p>
+
+  <section id="cargando" class="paso">
+    <p class="msg ok">Cargando…</p>
+  </section>
+
+  <section id="paso-correo" class="paso" hidden>
+    <h1>Entra a tu<br><span class="segunda">panel.</span></h1>
+    <p class="guia">Tu panel de vendedor. Entra con el código que te enviamos por correo.</p>
+    <form id="form-correo" novalidate>
+      <label for="correo">Correo registrado</label>
+      <input id="correo" name="correo" type="email" autocomplete="email" required>
+      <button id="btn-enviar" type="submit">Enviar código</button>
+    </form>
+    <p id="msg-correo" class="msg" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="paso-codigo" class="paso" hidden>
+    <form id="form-codigo" novalidate>
+      <label for="codigo">Código de 6 dígitos</label>
+      <input id="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+      <button id="btn-entrar" type="submit">Entrar</button>
+    </form>
+    <div class="bloque fila">
+      <button id="btn-reenviar" class="enlace" type="button" disabled>Reenviar código</button>
+      <button id="btn-cambiar" class="enlace" type="button">Cambiar correo</button>
+    </div>
+    <p id="msg-codigo" class="msg" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="paso-sesion" class="paso" hidden>
+    <p class="msg ok">Sesión iniciada.</p>
+    <button id="btn-salir" class="sec" type="button">Cerrar sesión</button>
+  </section>
+  <footer class="pie">
+    <p>¿Quieres vender Bien Visto? <a href="https://bienvisto.com.mx/vendedores">Conoce el programa</a>.</p>
+    <p>¿Necesitas ayuda para entrar?</p>
+    <a class="boton-soporte" href="https://wa.me/522201435851?text=Hola%2C%20vengo%20de%20la%20p%C3%A1gina%20de%20acceso%20para%20vendedores%20de%20Bien%20Visto%20%28vendedores.bienvisto.com.mx%29%20y%20necesito%20ayuda%20para%20entrar." target="_blank" rel="noopener">Hablar con soporte</a>
+  </footer>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const COOLDOWN_SEG = 60;
+  const MSG_CORREO_INVALIDO = "Escribe un correo válido.";
+  const MSG_ENVIADO = "Si el correo está registrado, te enviamos un código.";
+  const MSG_FALLO_CODIGO = "Código incorrecto o vencido.";
+  const MSG_ERROR_RED = "No pudimos conectar. Intenta de nuevo.";
+  const MSG_ERROR_GENERAL = "Algo salió mal. Intenta más tarde.";
+
+  let correoActual = "";
+  let timerReenvio = null;
+
+  function mostrar(id) {
+    for (const s of document.querySelectorAll(".paso")) s.hidden = s.id !== id;
+  }
+
+  function texto(el, msg, tipo) {
+    el.textContent = msg;
+    el.className = "msg " + (tipo || "ok");
+  }
+
+  async function llamar(ruta, cuerpo) {
+    const res = await fetch(ruta, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo || {}),
+    });
+    let datos = null;
+    try { datos = await res.json(); } catch (_) { datos = null; }
+    return { status: res.status, datos };
+  }
+
+  function iniciarEsperaReenvio() {
+    const btn = $("btn-reenviar");
+    let restante = COOLDOWN_SEG;
+    btn.disabled = true;
+    btn.textContent = `Reenviar en ${restante} s`;
+    clearInterval(timerReenvio);
+    timerReenvio = setInterval(() => {
+      restante -= 1;
+      if (restante <= 0) {
+        clearInterval(timerReenvio);
+        btn.disabled = false;
+        btn.textContent = "Reenviar código";
+      } else {
+        btn.textContent = `Reenviar en ${restante} s`;
+      }
+    }, 1000);
+  }
+
+  async function pedirCodigo(e, desdeCodigo) {
+    if (e) e.preventDefault();
+    const correo = $("correo").value.trim();
+    const msg = desdeCodigo ? $("msg-codigo") : $("msg-correo");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return texto(msg, MSG_CORREO_INVALIDO, "err");
+    $("btn-enviar").disabled = true;
+    try {
+      const { status, datos } = await llamar("/api/vendedor/codigo", { correo });
+      if (status === 400) return texto(msg, MSG_CORREO_INVALIDO, "err");
+      if (status !== 200 || !datos || datos.success !== true) return texto(msg, MSG_ERROR_GENERAL, "err");
+      correoActual = correo;
+      $("codigo").value = "";
+      texto($("msg-codigo"), MSG_ENVIADO, "ok");
+      mostrar("paso-codigo");
+      iniciarEsperaReenvio();
+      $("codigo").focus();
+    } catch (_) {
+      texto(msg, MSG_ERROR_RED, "err");
+    } finally {
+      $("btn-enviar").disabled = false;
+    }
+  }
+
+  async function verificarCodigo(e) {
+    if (e) e.preventDefault();
+    const codigo = $("codigo").value.trim();
+    const msg = $("msg-codigo");
+    if (!/^\d{6}$/.test(codigo)) return texto(msg, "Escribe los 6 dígitos del código.", "err");
+    $("btn-entrar").disabled = true;
+    try {
+      const { status, datos } = await llamar("/api/vendedor/verificar", { correo: correoActual, codigo });
+      if (status === 200 && datos && datos.success === true) {
+        clearInterval(timerReenvio);
+        return mostrar("paso-sesion");
+      }
+      if (status === 401) return texto(msg, MSG_FALLO_CODIGO, "err");
+      if (status === 400) return texto(msg, "Revisa el código e intenta de nuevo.", "err");
+      texto(msg, MSG_ERROR_GENERAL, "err");
+    } catch (_) {
+      texto(msg, MSG_ERROR_RED, "err");
+    } finally {
+      $("btn-entrar").disabled = false;
+    }
+  }
+
+  function volverACorreo() {
+    clearInterval(timerReenvio);
+    correoActual = "";
+    texto($("msg-correo"), "", "ok");
+    mostrar("paso-correo");
+    $("correo").focus();
+  }
+
+  async function cerrarSesion() {
+    try { await llamar("/api/vendedor/salir"); } catch (_) { /* se limpia igual en pantalla */ }
+    volverACorreo();
+  }
+
+  async function iniciar() {
+    try {
+      const res = await fetch("/api/vendedor/yo");
+      if (res.ok) return mostrar("paso-sesion");
+    } catch (_) { /* sin conexión: mostramos la entrada */ }
+    mostrar("paso-correo");
+    $("correo").focus();
+  }
+
+  $("form-correo").addEventListener("submit", pedirCodigo);
+  $("form-codigo").addEventListener("submit", verificarCodigo);
+  $("btn-reenviar").addEventListener("click", (e) => pedirCodigo(e, true));
+  $("btn-cambiar").addEventListener("click", volverACorreo);
+  $("btn-salir").addEventListener("click", cerrarSesion);
+  iniciar();
+})();
+</script>
+</body>
+</html>
