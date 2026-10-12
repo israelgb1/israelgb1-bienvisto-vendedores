@@ -148,6 +148,14 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 .li{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--borde);width:100%;text-align:left;min-height:60px;background:transparent;color:var(--tinta);font-weight:400;margin:0;border-top:0;border-left:0;border-right:0;border-radius:0}
 .lista-filas{list-style:none;padding:4px 14px;margin:0 0 12px;background:#fff;border:1px solid var(--borde);border-radius:16px}
 .lista-plana{list-style:none;padding:0;margin:0 0 12px}
+.hoja-fondo{position:fixed;inset:0;background:rgba(17,35,30,.45);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.hoja{background:var(--crema,#FBF8F1);width:100%;max-width:520px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px 24px;box-sizing:border-box}
+.hoja-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hoja-top h2{margin:0}
+.hoja-cuerpo{margin-top:12px}
+.dato-pago{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--borde)}
+.dato-pago:last-child{border-bottom:0}
+.dato-pago .lbl{margin:0}
 .lista-plana > li > .li{border-bottom:1px solid var(--borde)}
 .lista-plana > li:last-child > .li{border-bottom:0}
 .li:last-child{border-bottom:0}
@@ -939,6 +947,60 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     return [el("h2", { texto: cambiar ? "Cambiar de negocio" : "Pedir reposición" }), form];
   }
 
+  // Hoja con los datos para transferir. Cada dato tiene su botón para copiarlo.
+  const formatoClabe = (c) => String(c).replace(/^(\d{3})(\d{3})(\d{11})(\d)$/, "$1 $2 $3 $4");
+  async function abrirDatosPago(monto) {
+    const cerrar = () => { hoja.remove(); document.removeEventListener("keydown", alTeclear); };
+    const alTeclear = (e) => { if (e.key === "Escape") cerrar(); };
+    const hoja = el("div", { clase: "hoja-fondo", on: { click: (e) => { if (e.target === hoja) cerrar(); } } }, [
+      el("section", { clase: "hoja", role: "dialog", "aria-modal": "true", "aria-labelledby": "hoja-datos-t" }, [
+        el("div", { clase: "hoja-top" }, [
+          el("h2", { id: "hoja-datos-t", texto: "Datos de Bien Visto" }),
+          el("button", { type: "button", clase: "btn s sm", on: { click: cerrar } }, ["Cerrar"]),
+        ]),
+        el("p", { clase: "hint", texto: "Toca el icono de cada dato para copiarlo y pégalo en la app de tu banco. Revisa que el titular y la CLABE coincidan antes de confirmar." }),
+        el("div", { clase: "hoja-cuerpo" }, [el("p", { clase: "hint", texto: "Cargando…" })]),
+      ]),
+    ]);
+    document.body.append(hoja);
+    document.addEventListener("keydown", alTeclear);
+    const cuerpo = hoja.querySelector(".hoja-cuerpo");
+    const [datos, yo] = await Promise.all([
+      getJSON("/api/vendedor/datos-pago").catch(() => null),
+      getJSON("/api/vendedor/yo").catch(() => null),
+    ]);
+    if (!hoja.isConnected) return;
+    if (!datos) {
+      cuerpo.replaceChildren(el("p", { clase: "msg err", role: "status", texto: "No pudimos cargar los datos para transferir. Intenta de nuevo." }));
+      return;
+    }
+    if (datos.error) {
+      cuerpo.replaceChildren(el("p", { clase: "msg err", role: "status", texto: datos.error }));
+      return;
+    }
+    const primer = ((yo && yo.nombre) || "").trim().split(/\s+/)[0] || "";
+    const filas = [
+      ["Titular", datos.titular, datos.titular],
+      ["Banco", datos.banco, datos.banco],
+      ["CLABE", formatoClabe(datos.clabe), datos.clabe],
+      ...(datos.cuenta ? [["Cuenta", datos.cuenta, datos.cuenta]] : []),
+      ["Concepto", "BV " + primer.toUpperCase(), "BV " + primer.toUpperCase()],
+      ...(monto > 0 ? [["Monto a entregar", dinero(monto), String(monto)]] : []),
+    ];
+    cuerpo.replaceChildren(...filas.map(([etiqueta, mostrar, copia]) => {
+      const boton = el("button", { type: "button", clase: "btn s sm", "aria-label": "Copiar " + etiqueta.toLowerCase(), on: { click: async () => {
+        try { await navigator.clipboard.writeText(copia); } catch (_) {}
+        boton.textContent = "Copiado";
+        setTimeout(() => { boton.textContent = "Copiar"; }, 1800);
+      } } }, ["Copiar"]);
+      return el("div", { clase: "dato-pago" }, [
+        el("div", {}, [el("span", { clase: "lbl", texto: etiqueta }), el("b", { texto: mostrar })]),
+        boton,
+      ]);
+    }));
+    hoja.querySelector(".hoja-top button").focus();
+  }
+
   async function pSaldo() {
     const [s, v] = await Promise.all([getJSON("/api/vendedor/saldo"), getJSON("/api/vendedor/ventas").catch(() => null)]);
     if (!s) return null;
@@ -975,6 +1037,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       ]),
     );
     if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/p/" + enc("Avisar entrega")) } }, ["Avisar que entregué " + dinero(custodia)]));
+    if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => abrirDatosPago(custodia) } }, ["Datos de Bien Visto para transferir"]));
     nodos.push(
       el("h3", { clase: "sec-t", texto: "Tus ganancias" }),
       el("div", { clase: "tarjeta" }, [el("dl", { clase: "kv", style: "margin:0" }, [
