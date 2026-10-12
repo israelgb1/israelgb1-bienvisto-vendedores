@@ -1360,6 +1360,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     let flujo = null;
     const detector = new BarcodeDetector({ formats: ["qr_code"] });
     const video = el("video", { playsinline: "", muted: "", autoplay: "", "aria-label": "Vista de la cámara" });
+    let ultimoAjeno = { v: "", t: 0 };
     const parar = () => { if (flujo) flujo.getTracks().forEach((t) => t.stop()); flujo = null; };
     try {
       flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
@@ -1377,6 +1378,12 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
           const ruta = String(c.rawValue || "").split("?")[0].split("/").filter(Boolean).pop() || "";
           const folio = ruta.toUpperCase();
           if (FOLIO_APP.test(folio)) { parar(); return onFolio(folio); }
+          // QR ajeno: se avisa una vez y se vuelve a avisar solo si cambia el código o pasan 3 s.
+          const ahora = Date.now();
+          if (c.rawValue !== ultimoAjeno.v || ahora - ultimoAjeno.t > 3000) {
+            ultimoAjeno = { v: c.rawValue, t: ahora };
+            aviso("Este QR no es de un display Bien Visto. Busca el código impreso al frente del display.");
+          }
         }
       } catch (_) { /* cuadro sin QR: seguimos leyendo */ }
       setTimeout(tick, 300);
