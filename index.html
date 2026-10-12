@@ -144,7 +144,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 .li:last-child{border-bottom:0}
 .li .folio{flex:none;min-width:64px}
 .li .grow{flex:1;min-width:0}
-.li .t{display:block;font-weight:600;line-height:1.25;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .t{display:block;font-weight:600;line-height:1.25;font-size:16px}
 .li .m{display:block;font-size:14.5px;color:var(--muted);line-height:1.3}
 .li .chip{flex:none}
 .li .chev{width:20px;height:20px;flex:none;fill:none;stroke:var(--verde);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
@@ -928,23 +928,47 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     return nodos;
   }
 
+  // Mis ventas y comisión (mockup): comisión ganada, aviso de privacidad y filas por venta.
   async function pVentas() {
     const d = await getJSON("/api/vendedor/ventas");
     if (!d) return null;
     ventasCache = d.ventas || [];
-    const nodos = [el("h2", { texto: "Mis ventas" })];
+    const nodos = [
+      el("h2", { texto: "Mis ventas y comisión" }),
+      el("p", { clase: "sub", texto: "Lo que has vendido y lo que has ganado." }),
+    ];
     if (!ventasCache.length) {
       nodos.push(el("p", { clase: "hint", texto: "Aún no tienes ventas registradas." }));
-    } else {
-      nodos.push(el("ul", { clase: "lista" }, ventasCache.map((v) =>
-        el("li", {}, [
-          el("button", { type: "button", clase: "item", on: { click: () => ir("#/v/" + enc(v.id)) } }, [
-            el("div", { clase: "fila" }, [el("b", { texto: v.negocio }), chip(v.estado)]),
-            el("span", { texto: dinero(v.total) + " · " + (v.displays || 0) + " display(s) · " + String(v.created_at || "").slice(0, 10) }),
-          ]),
-        ])
-      )));
+      return conAviso(nodos);
     }
+    const cuenta = ventasCache.filter((v) => v.estado !== "anulada" && v.estado !== "rechazada");
+    // La comisión de cada venta es lo que retuviste: total menos lo que entregas a Bien Visto.
+    const comision = cuenta.reduce((a, v) => a + ((Number(v.total) || 0) - (Number(v.a_entregar) || 0)), 0);
+    const displays = cuenta.reduce((a, v) => a + (Number(v.displays) || 0), 0);
+    const etiquetaEstado = { cobrada: ["Por entregar", ""], pendiente: ["Pendiente", "g"], entregada: ["Entregada", "g"], anulada: ["Anulada", "r"], rechazada: ["Rechazada", "r"] };
+    const fecha = (x) => { const f = new Date(x); return isNaN(f) ? "" : f.toLocaleDateString("es-MX", { day: "numeric", month: "short" }); };
+    nodos.push(
+      el("div", { clase: "hero" }, [
+        el("span", { texto: "Comisión ganada", style: "display:block;font-size:14px;opacity:.92" }),
+        el("span", { clase: "grande", texto: dinero(comision) }),
+        el("span", { texto: cuenta.length + (cuenta.length === 1 ? " venta" : " ventas") + " · " + displays + (displays === 1 ? " display" : " displays") + " · " + dinero(COMISION_DISPLAY) + " por display, la retienes al cobrar.", style: "display:block;font-size:14px;opacity:.92" }),
+      ]),
+      el("div", { clase: "aviso", style: "font-size:14.5px" }, [el("b", { texto: "Por privacidad " }), "aquí no ves el contacto de tus clientes. Bien Visto envía y reenvía los recibos y las facturas por ti."]),
+      el("ul", { clase: "lista-filas" }, ventasCache.map((v) => {
+        const [txt, cls] = etiquetaEstado[v.estado] || [v.estado, "g"];
+        const comVenta = (Number(v.total) || 0) - (Number(v.a_entregar) || 0);
+        return el("li", {}, [
+          el("button", { type: "button", clase: "li", on: { click: () => ir("#/v/" + enc(v.id)) } }, [
+            el("span", { clase: "grow" }, [
+              el("span", { clase: "t", texto: v.negocio + " · " + (v.displays || 0) + (v.displays === 1 ? " display" : " displays") }),
+              el("span", { clase: "m", texto: dinero(v.total) + " · " + fecha(v.created_at) }),
+              el("span", { clase: "m", texto: "Tu comisión " + dinero(comVenta) }),
+            ]),
+            chip(v.estado, txt, cls),
+          ]),
+        ]);
+      })),
+    );
     return conAviso(nodos);
   }
 
