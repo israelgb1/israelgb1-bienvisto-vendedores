@@ -1635,12 +1635,44 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     ];
   }
 
+  // Mi cuenta: datos del vendedor, actividad del mes y cierre de sesión (mockup "Mi cuenta").
   async function pCuenta() {
+    const [yo, d, s] = await Promise.all([getJSON("/api/vendedor/yo"), getJSON("/api/vendedor/displays"), getJSON("/api/vendedor/saldo")]);
+    if (!yo || !d || !s) return null;
+    const lista = d.displays || [];
+    const activos = lista.filter((x) => x.estado === "activo").length;
+    const libres = lista.filter((x) => x.estado === "libre").length;
+    const datos = [];
+    if (yo.correo) datos.push(el("dt", { texto: "Correo" }), el("dd", { texto: yo.correo }));
+    if (yo.whatsapp) datos.push(el("dt", { texto: "WhatsApp" }), el("dd", { texto: yo.whatsapp }));
+    const alta = yo.fecha_registro ? new Date(String(yo.fecha_registro).replace(" ", "T") + "Z") : null;
+    const altaTxt = alta && !isNaN(alta) ? alta.toLocaleDateString("es-MX", { month: "long", year: "numeric" }) : "";
     return [
       el("h2", { texto: "Mi cuenta" }),
-      el("div", { clase: "tarjeta" }, [el("b", { texto: nombreVend || "Vendedor" }), el("span", { texto: "Vendedor activo" })]),
-      el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/p/" + enc("Datos de cobro")) } }, ["Mis datos de cobro"]),
-      el("a", { clase: "btn s", href: WA_AYUDA, target: "_blank", rel: "noopener" }, ["Hablar con soporte"]),
+      el("p", { clase: "sub", texto: "Tus datos como vendedor de Bien Visto." }),
+      el("div", { clase: "tarjeta" }, [
+        el("div", { clase: "fila" }, [
+          el("span", { clase: "mn-av", "aria-hidden": "true", texto: iniciales(yo.nombre || nombreVend) }),
+          el("div", {}, [el("b", { texto: yo.nombre || nombreVend || "Vendedor" }), el("span", { clase: "hint", texto: "Vendedor activo" + (altaTxt ? " · alta " + altaTxt : "") })]),
+        ]),
+        ...(datos.length ? [el("dl", { clase: "kv", style: "margin-top:12px" }, datos)] : []),
+        el("p", { clase: "hint", texto: "Para cambiar tu correo o WhatsApp, pídelo a Bien Visto." }),
+      ]),
+      el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Mis datos de cobro" }),
+        el("p", { clase: "hint", texto: "Llegan cuando se activen los pagos por transferencia." }),
+      ]),
+      el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Mi actividad" }),
+        el("dl", { clase: "kv" }, [
+          el("dt", { texto: "Displays activos" }), el("dd", { texto: String(activos) }),
+          el("dt", { texto: "Libres en tu inventario" }), el("dd", { texto: String(libres) }),
+          el("dt", { texto: "Por entregar" }), el("dd", { texto: dinero(s.custodia) }),
+        ]),
+        el("button", { type: "button", clase: "btn s sm", style: "margin-top:10px", on: { click: () => ir("#/saldo") } }, ["Ver mi saldo"]),
+      ]),
+      el("button", { type: "button", clase: "btn s", on: { click: async () => { $("cajon").hidden = false; await pintarCajon(); confirmarSalida(); } } }, ["Cerrar sesión"]),
+      el("a", { clase: "btn s", style: "margin-top:8px", href: WA_AYUDA, target: "_blank", rel: "noopener" }, ["Hablar con soporte"]),
     ];
   }
 
