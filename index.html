@@ -338,7 +338,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
   const enc = (s) => encodeURIComponent(s);
   const WA_AYUDA = "https://wa.me/522201435851?text=" + encodeURIComponent("Hola, soy vendedor de Bien Visto y necesito ayuda con mi panel.");
   const ESTADOS = {
-    libre: ["Libre", "g"], activo: ["Activo", "v"], retirado: ["Retirado", "r"],
+    libre: ["Libre", "g"], activo: ["Activo", "v"], retirado: ["Retirado", "r"], prueba: ["En prueba", ""],
     pendiente: ["Pendiente", ""], rev: ["En revisión", ""], cobrada: ["Cobrada", "v"],
     entregada: ["Entregada", "v"], anulada: ["Anulada", "r"],
   };
@@ -507,7 +507,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
         el("li", {}, [
           el("button", { type: "button", clase: "item", on: { click: () => ir("#/d/" + enc(x.folio)) } }, [
             el("div", { clase: "fila" }, [el("span", { clase: "folio sm", texto: x.folio }), chip(x.estado)]),
-            el("span", { texto: x.negocio_asignado || "Sin negocio asignado" }),
+            el("span", { texto: (x.negocio_asignado || "Sin negocio asignado") + (x.prueba_min_restantes != null ? " · quedan " + x.prueba_min_restantes + " min" : "") }),
           ]),
         ])
       ));
@@ -531,14 +531,40 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
     if (f.estado === "libre") {
       botones.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/vender/" + enc(f.folio)) } }, ["Activar display"]));
     }
+    const msg = el("p", { clase: "msg", role: "status" });
+    if (f.estado === "prueba") {
+      botones.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/vender/" + enc(f.folio)) } }, ["Cobrar y activar"]));
+      const terminar = el("button", { type: "button", clase: "btn s" }, ["Terminar prueba"]);
+      terminar.addEventListener("click", async () => {
+        terminar.disabled = true;
+        try {
+          const { status, datos } = await postJSON("/api/vendedor/pruebas/" + enc(f.folio) + "/terminar", {});
+          if (status === 200 && datos && datos.success) {
+            aviso = "Prueba terminada. " + f.folio + " quedó libre.";
+            ir("#/displays");
+          } else if (status !== 401) {
+            texto(msg, errorDe(datos), "err");
+          }
+        } catch (_) {
+          texto(msg, MSG_ERROR_RED, "err");
+        } finally {
+          terminar.disabled = false;
+        }
+      });
+      botones.push(terminar);
+    }
     return [
       el("div", { clase: "tarjeta centro" }, [
         el("span", { clase: "lbl", texto: "Display" }),
         el("div", { clase: "folio", texto: f.folio }),
         el("div", { clase: "fila" }, [chip(f.estado)]),
       ]),
-      el("dl", { clase: "kv" }, [el("dt", { texto: "Negocio" }), el("dd", { texto: f.negocio_asignado || "—" })]),
+      el("dl", { clase: "kv" }, [
+        el("dt", { texto: "Negocio" }), el("dd", { texto: f.negocio_asignado || "—" }),
+        ...(f.prueba_min_restantes != null ? [el("dt", { texto: "Prueba" }), el("dd", { texto: "Quedan " + f.prueba_min_restantes + " min" })] : []),
+      ]),
       ...botones,
+      msg,
     ];
   }
 
@@ -696,10 +722,10 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
   async function pVender([folioPre]) {
     const d = await getJSON("/api/vendedor/displays");
     if (!d) return null;
-    const libres = (d.displays || []).filter((x) => x.estado === "libre");
+    const libres = (d.displays || []).filter((x) => x.estado === "libre" || x.estado === "prueba");
     const nodos = [el("h2", { texto: "Vender un display" })];
     if (!libres.length) {
-      nodos.push(el("p", { clase: "hint", texto: "No tienes displays libres para vender." }));
+      nodos.push(el("p", { clase: "hint", texto: "No tienes displays libres ni en prueba para vender." }));
       return conAviso(nodos);
     }
     const msg = el("p", { clase: "msg", role: "status" });
@@ -807,9 +833,35 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
       el("option", { value: "transferencia", texto: "Transferencia" }),
     ]);
     const lista = el("div", { clase: "campo" }, libres.map((f) =>
-      el("label", { clase: "opcion" }, [el("input", { type: "checkbox", value: f.folio, name: "folio", checked: folioPre === f.folio }), f.folio])
+      el("label", { clase: "opcion" }, [el("input", { type: "checkbox", value: f.folio, name: "folio", checked: folioPre === f.folio }), f.folio + (f.estado === "prueba" ? " · en prueba" : "")])
     ));
     const enviar = el("button", { type: "button", clase: "btn p" }, ["Vender y activar"]);
+    const pruebaBtn = el("button", { type: "button", clase: "btn s" }, ["Iniciar prueba (30 min máximo)"]);
+    pruebaBtn.addEventListener("click", async () => {
+      texto(msg, "", "ok");
+      const seleccion = [...lista.querySelectorAll("input:checked")].map((i) => i.value);
+      if (!negocioElegido) return texto(msg, "Elige el negocio de la lista.", "err");
+      if (seleccion.length !== 1) return texto(msg, "Para la prueba elige un solo display.", "err");
+      pruebaBtn.disabled = true;
+      try {
+        const { status, datos } = await postJSON("/api/vendedor/pruebas", {
+          folio: seleccion[0],
+          negocio: negocioElegido.nombre,
+          url_resena: negocioElegido.enlace_resena,
+        });
+        if (status === 200 && datos && datos.success) {
+          ventasCache = [];
+          aviso = "Prueba iniciada en " + negocioElegido.nombre + " con " + datos.folio + ". Tienes 30 min.";
+          ir("#/displays");
+        } else if (status !== 401) {
+          texto(msg, errorDe(datos), "err");
+        }
+      } catch (_) {
+        texto(msg, MSG_ERROR_RED, "err");
+      } finally {
+        pruebaBtn.disabled = false;
+      }
+    });
     enviar.addEventListener("click", async () => {
       texto(msg, "", "ok");
       const seleccion = [...lista.querySelectorAll("input:checked")].map((i) => i.value);
@@ -866,6 +918,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
       el("span", { clase: "lbl", texto: "3 · Displays que activas" }),
       lista,
       enviar,
+      pruebaBtn,
       msg,
     );
     return nodos;
