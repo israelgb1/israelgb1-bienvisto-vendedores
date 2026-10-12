@@ -2170,6 +2170,9 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const pendienteCobro = cobro && cobro.pendiente;
     const tarjetaCobro = el("div", { clase: "tarjeta" }, [
       el("span", { clase: "lbl", texto: "Mis datos de cobro" }),
+      ...(cobro && cobro.aprobada
+        ? [el("div", { clase: "aviso", role: "status", texto: "Bien Visto aprobó tu cambio. Desde ahora tus pagos por transferencia van a la cuenta terminada en " + String(cobro.aprobada.cuenta).slice(-4) + ". Tus cobros anteriores no cambian." })]
+        : []),
       ...(cobro && cobro.rechazada
         ? [el("div", { clase: "aviso alerta", role: "status", texto: "Bien Visto no aprobó tu último cambio a la cuenta terminada en " + String(cobro.rechazada.cuenta).slice(-4) + ". Sigue vigente tu cuenta anterior. Puedes pedir otro cambio." })]
         : []),
