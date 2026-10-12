@@ -178,6 +178,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
 .resultados{max-height:260px;overflow-y:auto;margin:4px 0 12px;padding:2px 2px 0 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 
 .drawer-in{background:var(--crema);width:85%;max-width:330px;height:100%;padding:16px 14px 20px;overflow-y:auto}
+.av{width:64px;height:64px;border-radius:50%;background:var(--verde);color:var(--crema);display:grid;place-items:center;font:600 23px/1 var(--fd);flex:none}
 .mn-top small{display:block;font-size:14px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400}
 .mn-top{display:flex;align-items:center;gap:10px;margin:0 0 8px}
 .mn-av{width:46px;height:46px;border-radius:50%;background:var(--verde);color:var(--crema);display:grid;place-items:center;font:600 17px/1 var(--fd);flex:none}
@@ -1907,17 +1908,18 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const datos = [];
     if (yo.correo) datos.push(el("dt", { texto: "Correo" }), el("dd", { texto: yo.correo }));
     if (yo.whatsapp) datos.push(el("dt", { texto: "WhatsApp" }), el("dd", { texto: yo.whatsapp }));
+    datos.push(el("dt", { texto: "Acceso" }), el("dd", { texto: "Con código a tu correo" }));
     const alta = yo.fecha_registro ? new Date(String(yo.fecha_registro).replace(" ", "T") + "Z") : null;
-    const altaTxt = alta && !isNaN(alta) ? alta.toLocaleDateString("es-MX", { month: "long", year: "numeric" }) : "";
+    const altaTxt = alta && !isNaN(alta) ? alta.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : "";
     return [
       el("h2", { texto: "Mi cuenta" }),
       el("p", { clase: "sub", texto: "Tus datos como vendedor de Bien Visto." }),
       el("div", { clase: "tarjeta" }, [
-        el("div", { clase: "fila" }, [
-          el("span", { clase: "mn-av", "aria-hidden": "true", texto: iniciales(yo.nombre || nombreVend) }),
-          el("div", {}, [el("b", { texto: yo.nombre || nombreVend || "Vendedor" }), el("span", { clase: "hint", texto: "Vendedor activo" + (altaTxt ? " · alta " + altaTxt : "") })]),
+        el("div", { clase: "fila", style: "justify-content:flex-start;gap:14px" }, [
+          el("div", { clase: "av", "aria-hidden": "true", texto: iniciales(yo.nombre || nombreVend) }),
+          el("div", {}, [el("b", { texto: yo.nombre || nombreVend || "Vendedor", style: "display:block;font:600 19px/1.2 var(--fd)" }), el("span", { clase: "hint", style: "margin:2px 0 0", texto: "Vendedor" + (altaTxt ? " · alta " + altaTxt : "") })]),
         ]),
-        ...(datos.length ? [el("dl", { clase: "kv", style: "margin-top:12px" }, datos)] : []),
+        ...(datos.length ? [el("dl", { clase: "kv", style: "margin:14px 0 8px" }, datos)] : []),
         el("p", { clase: "hint", texto: "Para cambiar tu correo o WhatsApp, pídelo a Bien Visto." }),
       ]),
       el("div", { clase: "tarjeta" }, [
