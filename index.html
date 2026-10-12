@@ -2189,23 +2189,10 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const pintarNegocio = () => {
       let turno = 0;
       let temporizador = null;
-      const msg = el("p", { clase: "msg err", role: "alert", hidden: "" });
       const lista = el("ul", { clase: "lista resultados", "aria-live": "polite" });
-      const elegido = el("div", {});
       const avisoLista = (txto) => lista.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: txto })]));
       const pintarLista = (items) => {
-        lista.replaceChildren(...items.map((r) => el("li", {}, [el("button", { type: "button", clase: "item", on: { click: () => { LOTE.negocio = r; pintarElegido(); } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion || "" })])])));
-      };
-      const pintarElegido = () => {
-        if (!LOTE.negocio) { elegido.replaceChildren(); buscar.hidden = false; return; }
-        buscar.hidden = true;
-        lista.replaceChildren();
-        elegido.replaceChildren(el("div", { clase: "tarjeta" }, [
-          el("span", { clase: "lbl", texto: "Negocio" }),
-          el("b", { texto: LOTE.negocio.nombre }),
-          el("p", { clase: "hint", texto: LOTE.negocio.direccion || "" }),
-          el("button", { type: "button", clase: "btn s sm", on: { click: () => { LOTE.negocio = null; buscar.value = ""; pintarElegido(); } } }, ["Cambiar negocio"]),
-        ]));
+        lista.replaceChildren(...items.map((r) => el("li", {}, [el("button", { type: "button", clase: "item", on: { click: () => { LOTE.negocio = r; pintarConfirmar(); } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion || "" })])])));
       };
       const buscarNegocio = async (q) => {
         const mi = ++turno;
@@ -2249,20 +2236,6 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         if (q.length < 3) { turno++; lista.replaceChildren(); return; }
         temporizador = setTimeout(() => buscarNegocio(q), 450);
       });
-
-      const respuesta = el("p", { clase: "hint", hidden: "", texto: "Escribe la colonia o la calle junto con el nombre, por ejemplo «Tacos La Esquina Patria». Si no sale, el negocio puede no tener ficha en Google Maps." });
-      const preguntaNo = el("button", { type: "button", clase: "helpl quiet", style: "margin:0;text-align:left", "aria-expanded": "false", on: { click: () => {
-        const abrir = respuesta.hidden;
-        respuesta.hidden = !abrir;
-        preguntaNo.setAttribute("aria-expanded", String(abrir));
-      } } }, ["¿No aparece el negocio?"]);
-
-      const continuar = () => {
-        texto(msg, "", "ok");
-        if (!LOTE.negocio) return texto(msg, "Elige el negocio.", "err");
-        ir("#/lote/actual");
-      };
-
       caja.replaceChildren(
         el("div", { clase: "row", style: "margin-bottom:6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
         el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Primero el cliente y su negocio; después tocas los displays." }),
@@ -2272,16 +2245,79 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         el("label", { clase: "lbl", for: "bus-n", texto: "Buscar en Google Maps" }),
         buscar,
         el("button", { type: "button", clase: "btn s sm", style: "margin:12px 0", on: { click: ubicar } }, ["Usar mi ubicación: negocios cerca de mí"]),
-        elegido,
         lista,
         el("hr", { style: "border:0;border-top:1px solid var(--borde);margin:14px 0" }),
-        preguntaNo,
-        respuesta,
-        el("button", { type: "button", clase: "btn p", style: "margin-top:16px", on: { click: continuar } }, ["Siguiente: agregar displays"]),
         el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => { LOTE.negocio = null; pintarCliente(); } } }, ["Atrás"]),
-        msg,
       );
-      pintarElegido();
+    };
+
+    // Paso 3 · ¿Es este? Nombre, dirección y calificación de Google, como en el mockup.
+    const pintarConfirmar = () => {
+      const n = LOTE.negocio;
+      const PIN = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#0E6B5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+      const CHECK = '<svg viewBox="0 0 80 60" width="36" height="27" aria-hidden="true" style="flex:none"><path d="M14 30 L30 46 L66 10" fill="none" stroke="#0E6B5C" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const ratingLinea = el("p", { style: "margin:4px 0 0" });
+      // Miniatura de la foto de Google a la derecha; queda oculta hasta que la imagen carga.
+      const fotoCaja = el("div", { hidden: "", style: "flex:none;width:72px;height:72px;border-radius:12px;overflow:hidden;border:1px solid var(--borde);background:#F4F8F6" });
+      const respuesta = el("p", { clase: "hint", hidden: "", texto: "Lee la dirección en voz alta con el cliente. Si coincide con el local donde estás, es esa." });
+      const pregunta = el("button", { type: "button", clase: "helpl quiet", style: "margin:0;text-align:left", "aria-expanded": "false" }, ["¿Cómo sé que es la sucursal correcta?"]);
+      pregunta.addEventListener("click", () => {
+        const abrir = respuesta.hidden;
+        respuesta.hidden = !abrir;
+        pregunta.setAttribute("aria-expanded", String(abrir));
+      });
+      caja.replaceChildren(
+        el("div", { clase: "row", style: "margin-bottom:6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
+        el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Primero el cliente y su negocio; después tocas los displays." }),
+        el("div", { clase: "steps", "aria-hidden": "true" }, [el("i", { clase: "on" }), el("i", { clase: "on" }), el("i", { clase: "on" }), el("i")]),
+        el("h2", { texto: "¿Es este?" }),
+        el("p", { clase: "sub", texto: "Confirma con el cliente: nombre y dirección." }),
+        el("div", { clase: "card" }, [
+          el("div", { clase: "row", style: "display:flex;align-items:flex-start;gap:12px" }, [
+            icono(PIN),
+            el("div", { style: "flex:1;min-width:0" }, [
+              el("b", { texto: n.nombre, style: "font:500 20px/1.2 var(--fd);display:block" }),
+              el("p", { clase: "hint", style: "margin:4px 0 0", texto: n.direccion || "Sin dirección" }),
+              ratingLinea,
+            ]),
+            fotoCaja,
+          ]),
+        ]),
+        el("div", { clase: "aviso", style: "display:flex;gap:12px;align-items:flex-start" }, [
+          icono(CHECK),
+          el("span", { texto: "Cuando alguien escanee el QR o acerque su celular a cualquiera de los displays del lote, se abrirá Google Maps listo para dejar una reseña de este negocio. El enlace se crea solo." }),
+        ]),
+        el("button", { type: "button", clase: "btn p", style: "margin-top:12px", on: { click: () => ir("#/lote/actual") } }, ["Continuar: elegir displays"]),
+        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { LOTE.negocio = null; pintarNegocio(); } } }, ["No es este: buscar otro"]),
+        pregunta,
+        respuesta,
+      );
+      // Calificación y reseñas desde Google. Si no hay ficha, la tarjeta se queda sin esa línea.
+      fetch("/api/vendedor/ficha-negocio?place_id=" + enc(n.place_id || ""))
+        .then(async (res) => {
+          if (res.status === 401) return sesionCaducada();
+          if (!res.ok) return null;
+          const d = await res.json().catch(() => null);
+          return d && d.google ? d.google : null;
+        })
+        .then((g) => {
+          if (!g || !caja.contains(ratingLinea)) return;
+          if (g.foto) {
+            const img = el("img", { src: "/api/vendedor/foto-negocio?ref=" + enc(g.foto), alt: "Foto de " + n.nombre, style: "width:100%;height:100%;object-fit:cover;display:block" });
+            img.addEventListener("load", () => { fotoCaja.hidden = false; });
+            img.addEventListener("error", () => { fotoCaja.hidden = true; });
+            fotoCaja.replaceChildren(img);
+          }
+          const n5 = Math.round(g.rating);
+          ratingLinea.replaceChildren(
+            el("span", { style: "display:inline;white-space:nowrap" }, [
+              el("span", { style: "display:inline;color:var(--ambar);letter-spacing:1px", "aria-label": g.rating.toFixed(1) + " de 5 estrellas" }, ["★".repeat(n5), el("span", { style: "display:inline;color:var(--borde)", texto: "★".repeat(5 - n5) })]),
+              el("b", { style: "display:inline", texto: " " + g.rating.toFixed(1) }),
+              el("span", { style: "display:inline;color:var(--muted);font-size:14px", texto: " · " + g.total_resenas + (g.total_resenas === 1 ? " reseña" : " reseñas") }),
+            ]),
+          );
+        })
+        .catch(() => {});
     };
 
     pintarCliente();
