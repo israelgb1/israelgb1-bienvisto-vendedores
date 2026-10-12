@@ -4033,6 +4033,7 @@ var qrcode = function() {
     const displays = d.displays || [];
     const contenedor = el("div", {});
     const avisoGlobal = el("p", { clase: "msg", role: "status" });
+    const msgProbar = el("p", { clase: "msg", role: "status" });
     const st = { folio: null, negocio: null, cliente: null, clientes: null, form: { nombre: "", wa: "", mail: "" }, ventaId: null, pm: "efectivo", clienteNuevo: false };
     let turnoBusqueda = 0;
     let temporizador = null;
@@ -4070,6 +4071,8 @@ var qrcode = function() {
       const entrada = el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", autocapitalize: "characters", "aria-label": "Folio del display" });
       const msg = el("p", { clase: "msg", role: "status" });
       const continuar = (f) => {
+        const ya = displays.find((y) => y.folio === f);
+        if (ya && ya.estado === "prueba") return ir("#/prueba/" + enc(f));
         const e = folioValido(f);
         if (e) return texto(msg, e, "err");
         st.folio = f;
@@ -4239,6 +4242,7 @@ var qrcode = function() {
         tarjetaNegocio(p),
         el("div", { clase: "aviso", texto: "Cuando alguien escanee el QR o acerque su celular a " + st.folio + ", se abrirá Google Maps listo para dejar una reseña de este negocio. El enlace se crea solo." }),
         el("button", { type: "button", clase: "btn a", style: "margin-top:12px", on: { click: () => probarDisplay() } }, ["Probar el display ahora"]),
+        msgProbar,
         el("p", { clase: "hint", texto: "El cliente ve su reseña funcionando durante 30 minutos y todavía no paga nada. Si no compra, el display queda libre y no se guarda nada." }),
         el("button", { type: "button", clase: "btn p", on: { click: () => pantallaDatos() } }, ["Ya quiere comprarlo: ir al cobro"]),
         el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => pantallaNegocio() } }, ["No es este: buscar otro"]),
@@ -4247,6 +4251,7 @@ var qrcode = function() {
     };
 
     const probarDisplay = async () => {
+      texto(msgProbar, "Iniciando la prueba…", "ok");
       const { status, datos } = await postJSON("/api/vendedor/pruebas", { folio: st.folio, negocio: st.negocio.nombre, url_resena: st.negocio.enlace_resena });
       if (status === 200 && datos && datos.success) {
         ventasCache = [];
@@ -4254,7 +4259,8 @@ var qrcode = function() {
         aviso = "Prueba iniciada: 30 minutos.";
         ir("#/prueba/" + enc(st.folio));
       } else if (status !== 401) {
-        texto(avisoGlobal, errorDe(datos), "err");
+        texto(msgProbar, errorDe(datos), "err");
+        msgProbar.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     };
 
