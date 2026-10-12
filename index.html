@@ -1638,6 +1638,51 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     ];
   }
 
+  // Tarjeta del negocio: nombre, dirección, calificación y reseñas de Google, y miniatura de la foto a la derecha.
+  // Si Google no responde, la tarjeta queda solo con nombre y dirección.
+  const tarjetaNegocio = (n) => {
+    const PIN = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#0E6B5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+    const ratingLinea = el("p", { style: "margin:4px 0 0" });
+    const fotoCaja = el("div", { hidden: "", style: "flex:none;width:72px;height:72px;border-radius:12px;overflow:hidden;border:1px solid var(--borde);background:#F4F8F6" });
+    const tarjeta = el("div", { clase: "card" }, [
+      el("div", { clase: "row", style: "display:flex;align-items:flex-start;gap:12px" }, [
+        icono(PIN),
+        el("div", { style: "flex:1;min-width:0" }, [
+          el("b", { texto: n.nombre, style: "font:500 20px/1.2 var(--fd);display:block" }),
+          el("p", { clase: "hint", style: "margin:4px 0 0", texto: n.direccion || "Sin dirección" }),
+          ratingLinea,
+        ]),
+        fotoCaja,
+      ]),
+    ]);
+    fetch("/api/vendedor/ficha-negocio?place_id=" + enc(n.place_id || ""))
+      .then(async (res) => {
+        if (res.status === 401) return sesionCaducada();
+        if (!res.ok) return null;
+        const d = await res.json().catch(() => null);
+        return d && d.google ? d.google : null;
+      })
+      .then((g) => {
+        if (!g) return;
+        if (g.foto) {
+          const img = el("img", { src: "/api/vendedor/foto-negocio?ref=" + enc(g.foto), alt: "Foto de " + n.nombre, style: "width:100%;height:100%;object-fit:cover;display:block" });
+          img.addEventListener("load", () => { fotoCaja.hidden = false; });
+          img.addEventListener("error", () => { fotoCaja.hidden = true; });
+          fotoCaja.replaceChildren(img);
+        }
+        const n5 = Math.round(g.rating);
+        ratingLinea.replaceChildren(
+          el("span", { style: "display:inline;white-space:nowrap" }, [
+            el("span", { style: "display:inline;color:var(--ambar);letter-spacing:1px", "aria-label": g.rating.toFixed(1) + " de 5 estrellas" }, ["★".repeat(n5), el("span", { style: "display:inline;color:var(--borde)", texto: "★".repeat(5 - n5) })]),
+            el("b", { style: "display:inline", texto: " " + g.rating.toFixed(1) }),
+            el("span", { style: "display:inline;color:var(--muted);font-size:14px", texto: " · " + g.total_resenas + (g.total_resenas === 1 ? " reseña" : " reseñas") }),
+          ]),
+        );
+      })
+      .catch(() => {});
+    return tarjeta;
+  };
+
   async function pVender([folioPre]) {
     if (await bloqueadoParaActivar(folioPre)) return null;
     const d = await getJSON("/api/vendedor/displays");
@@ -1817,7 +1862,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         encabezadoPaso(1),
         el("h2", { texto: "¿Es este?" }),
         el("p", { clase: "sub", texto: "Confirma con el cliente: nombre y dirección." }),
-        el("div", { clase: "tarjeta" }, [el("b", { texto: p.nombre }), el("span", { texto: p.direccion })]),
+        tarjetaNegocio(p),
         el("div", { clase: "aviso", texto: "Cuando alguien escanee el QR o acerque su celular a " + st.folio + ", se abrirá Google Maps listo para dejar una reseña de este negocio. El enlace se crea solo." }),
         el("button", { type: "button", clase: "btn a", style: "margin-top:12px", on: { click: () => probarDisplay() } }, ["Probar el display ahora"]),
         el("p", { clase: "hint", texto: "El cliente ve su reseña funcionando durante 30 minutos y todavía no paga nada. Si no compra, el display queda libre y no se guarda nada." }),
@@ -2251,14 +2296,10 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       );
     };
 
-    // Paso 3 · ¿Es este? Nombre, dirección y calificación de Google, como en el mockup.
+    // Paso 3 · ¿Es este? Nombre, dirección, calificación, reseñas y foto, como en el mockup.
     const pintarConfirmar = () => {
       const n = LOTE.negocio;
-      const PIN = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#0E6B5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
       const CHECK = '<svg viewBox="0 0 80 60" width="36" height="27" aria-hidden="true" style="flex:none"><path d="M14 30 L30 46 L66 10" fill="none" stroke="#0E6B5C" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      const ratingLinea = el("p", { style: "margin:4px 0 0" });
-      // Miniatura de la foto de Google a la derecha; queda oculta hasta que la imagen carga.
-      const fotoCaja = el("div", { hidden: "", style: "flex:none;width:72px;height:72px;border-radius:12px;overflow:hidden;border:1px solid var(--borde);background:#F4F8F6" });
       const respuesta = el("p", { clase: "hint", hidden: "", texto: "Lee la dirección en voz alta con el cliente. Si coincide con el local donde estás, es esa." });
       const pregunta = el("button", { type: "button", clase: "helpl quiet", style: "margin:0;text-align:left", "aria-expanded": "false" }, ["¿Cómo sé que es la sucursal correcta?"]);
       pregunta.addEventListener("click", () => {
@@ -2272,17 +2313,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         el("div", { clase: "steps", "aria-hidden": "true" }, [el("i", { clase: "on" }), el("i", { clase: "on" }), el("i", { clase: "on" }), el("i")]),
         el("h2", { texto: "¿Es este?" }),
         el("p", { clase: "sub", texto: "Confirma con el cliente: nombre y dirección." }),
-        el("div", { clase: "card" }, [
-          el("div", { clase: "row", style: "display:flex;align-items:flex-start;gap:12px" }, [
-            icono(PIN),
-            el("div", { style: "flex:1;min-width:0" }, [
-              el("b", { texto: n.nombre, style: "font:500 20px/1.2 var(--fd);display:block" }),
-              el("p", { clase: "hint", style: "margin:4px 0 0", texto: n.direccion || "Sin dirección" }),
-              ratingLinea,
-            ]),
-            fotoCaja,
-          ]),
-        ]),
+        tarjetaNegocio(n),
         el("div", { clase: "aviso", style: "display:flex;gap:12px;align-items:flex-start" }, [
           icono(CHECK),
           el("span", { texto: "Cuando alguien escanee el QR o acerque su celular a cualquiera de los displays del lote, se abrirá Google Maps listo para dejar una reseña de este negocio. El enlace se crea solo." }),
@@ -2292,32 +2323,6 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         pregunta,
         respuesta,
       );
-      // Calificación y reseñas desde Google. Si no hay ficha, la tarjeta se queda sin esa línea.
-      fetch("/api/vendedor/ficha-negocio?place_id=" + enc(n.place_id || ""))
-        .then(async (res) => {
-          if (res.status === 401) return sesionCaducada();
-          if (!res.ok) return null;
-          const d = await res.json().catch(() => null);
-          return d && d.google ? d.google : null;
-        })
-        .then((g) => {
-          if (!g || !caja.contains(ratingLinea)) return;
-          if (g.foto) {
-            const img = el("img", { src: "/api/vendedor/foto-negocio?ref=" + enc(g.foto), alt: "Foto de " + n.nombre, style: "width:100%;height:100%;object-fit:cover;display:block" });
-            img.addEventListener("load", () => { fotoCaja.hidden = false; });
-            img.addEventListener("error", () => { fotoCaja.hidden = true; });
-            fotoCaja.replaceChildren(img);
-          }
-          const n5 = Math.round(g.rating);
-          ratingLinea.replaceChildren(
-            el("span", { style: "display:inline;white-space:nowrap" }, [
-              el("span", { style: "display:inline;color:var(--ambar);letter-spacing:1px", "aria-label": g.rating.toFixed(1) + " de 5 estrellas" }, ["★".repeat(n5), el("span", { style: "display:inline;color:var(--borde)", texto: "★".repeat(5 - n5) })]),
-              el("b", { style: "display:inline", texto: " " + g.rating.toFixed(1) }),
-              el("span", { style: "display:inline;color:var(--muted);font-size:14px", texto: " · " + g.total_resenas + (g.total_resenas === 1 ? " reseña" : " reseñas") }),
-            ]),
-          );
-        })
-        .catch(() => {});
     };
 
     pintarCliente();
