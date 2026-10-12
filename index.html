@@ -53,38 +53,78 @@ button.sec{background:transparent;color:var(--verde-visto);border:1px solid var(
 .pie .boton-soporte{display:inline-block;text-align:center;text-decoration:none;width:auto;padding:10px 16px;margin-top:12px;background:transparent;color:var(--verde-visto);border:1px solid var(--borde-fuerte);border-radius:10px;font-size:15px}
 .enlace:disabled{color:var(--tinta-suave);text-decoration:none}
 [hidden]{display:none!important}
-/* Panel de vendedor */
-body.con-tabs main{padding-bottom:110px}
-body.con-tabs .pie{display:none}
-.vista h2{font-size:28px;line-height:34px;margin:8px 0 16px}
-.vista .etiqueta{margin:0 0 4px}
-.tarjeta{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:16px;margin:0 0 12px}
-.tarjeta p{margin:4px 0 0}
-.num{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:600;font-size:36px;line-height:42px;margin:0;color:var(--verde-visto)}
-.aviso{background:var(--menta);border-radius:10px;padding:12px;margin:0 0 12px;color:var(--tinta)}
-.aviso.alerta{background:#FDECEA;color:var(--error)}
-select,textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:1px solid var(--borde-fuerte);border-radius:10px;background:#fff;color:var(--tinta)}
-textarea{min-height:80px}
-.campo{margin:0 0 16px}
-.lista{list-style:none;margin:0;padding:0}
+/* Panel de vendedor (fase 1: diseño del mockup, datos reales) */
+:root{--verde:var(--verde-visto);--verde-h:#0A5246;--ambar:var(--ambar-resena);--muted:var(--tinta-suave);--borde-s:var(--borde-fuerte)}
+body.con-tabs .etiqueta{display:none}
+body.con-tabs{background:var(--menta)}
+body.con-tabs #cabecera-login,body.con-tabs .pie{display:none}
+body.con-tabs main{max-width:none;padding:0;margin:0}
+#paso-sesion{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--crema);position:relative}
+textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:2px solid var(--borde-s);border-radius:8px;background:#fff;color:var(--tinta);min-height:80px}
+#paso-sesion .bar{display:flex;align-items:center;gap:10px;padding:10px 14px;height:62px;background:var(--menta);border-bottom:1px solid var(--borde);flex:none}
+.bar .iso{width:38px;height:auto;flex:none}
+.bar .grow{flex:1}
+.bk{width:auto;margin:0;padding:8px 12px;min-height:40px;border-radius:999px;background:transparent;color:var(--verde);border:2px solid var(--verde);font-size:14px}
+.hmb{width:auto;margin:0;padding:0 14px;height:46px;border-radius:14px;background:var(--verde);color:var(--crema);font-size:16px;display:flex;align-items:center;gap:8px}
+.hmb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}
+#app{flex:1;padding:14px 16px 110px;overflow-x:hidden}
+#app h2{font-size:28px;line-height:34px;margin:6px 0 14px}
+.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;display:flex;background:#fff;border-top:1px solid var(--borde);z-index:10}
+.tabs button{flex:1;width:auto;margin:0;padding:8px 0 10px;border-radius:0;background:transparent;color:var(--muted);font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:64px;line-height:1.15}
+.tabs button[aria-current="page"]{color:var(--verde);box-shadow:inset 0 3px 0 var(--verde)}
+.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn{width:100%;min-height:52px;padding:14px 24px;margin:0 0 12px;border-radius:999px;border:2px solid transparent;font:600 17px/20px Figtree,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.p{background:var(--verde);color:var(--crema)}
+.btn.a{background:var(--ambar);color:var(--tinta)}
+.btn.s{background:transparent;color:var(--tinta);border-color:var(--borde-s)}
+.btn.sm{width:auto;min-height:44px;padding:10px 18px;font-size:15px}
+.btn[disabled]{opacity:.45}
+.hero{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--verde);color:var(--crema);border-radius:20px;padding:18px;margin:0 0 12px;border:0;font-weight:400}
+.hero b{display:block;font:600 22px/1.15 "Bricolage Grotesque",system-ui,sans-serif}
+.hero small{display:block;font-size:14px;opacity:.92}
+.hero-ico{width:52px;height:52px;border-radius:50%;background:var(--ambar);display:grid;place-items:center;flex:none}
+.hero-ico svg{width:26px;height:26px}
+.hero .grande{color:var(--crema);margin:4px 0}
+.tarjeta{background:#fff;border:1px solid var(--borde);border-radius:16px;padding:16px;margin:0 0 12px}
+.tarjeta b{display:block;font-weight:600;font-size:17px}
+.tarjeta span{display:block;font-size:15px;color:var(--muted)}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dos .tarjeta{margin:0}
+.lista{list-style:none;padding:0;margin:0}
 .lista li{margin:0 0 8px}
-.item{display:block;width:100%;text-align:left;margin:0;padding:14px;background:#fff;color:var(--tinta);border:1px solid var(--borde);border-radius:12px;font-weight:400}
-.item strong{display:block;font-weight:600}
-.item span{font-size:14px;line-height:20px;color:var(--tinta-suave)}
-.estado{display:inline-block;font-size:13px;line-height:16px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--menta);color:var(--tinta)}
-.estado.pendiente{background:#FFF3D6;color:var(--ambar-texto)}
-.estado.cobrada,.estado.entregada{color:var(--verde-visto)}
-.estado.anulada{background:#FDECEA;color:var(--error)}
-.opcion{display:flex;gap:10px;align-items:center;font-size:16px;margin:0 0 10px;color:var(--tinta)}
-.opcion input{width:auto;margin:0}
-.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--borde);display:flex;justify-content:center;z-index:10}
-.tabs button{flex:1;max-width:70px;width:auto;margin:0;padding:10px 2px;border-radius:0;background:transparent;color:var(--tinta-suave);font-size:12px;line-height:16px}
-.tabs button[aria-current="page"]{color:var(--verde-visto);box-shadow:inset 0 3px 0 var(--verde-visto)}
+.item{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;margin:0;padding:14px;background:#fff;color:var(--tinta);border:1px solid var(--borde);border-radius:16px;font-weight:400;min-height:60px;text-decoration:none}
+.item b{display:block;font-weight:600;font-size:17px}
+.item span{font-size:15px;color:var(--muted)}
+.fila{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.folio{font:600 34px/1 "Bricolage Grotesque",system-ui,sans-serif;letter-spacing:.08em;color:var(--verde)}
+.folio.sm{font-size:20px}
+.chip{display:inline-flex;align-items:center;font:600 13px/1 Figtree,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:6px 10px;border-radius:999px;background:var(--ambar);color:var(--tinta);white-space:nowrap}
+.chip.v{background:var(--menta);color:var(--verde)}
+.chip.g{background:#eef0ef;color:var(--muted)}
+.chip.r{background:#f7e3e1;color:var(--error)}
+.lbl{font:600 14px/18px Figtree,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin:0 0 6px}
+.hint{font-size:15px;color:var(--muted);margin:4px 0 14px}
+.campo{display:block;margin:0 0 14px}
+.aviso{background:var(--menta);border-radius:12px;padding:12px 14px;margin:0 0 12px;color:var(--tinta)}
+.aviso.alerta{background:#f7e3e1;color:var(--error)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px;margin:0 0 16px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600;word-break:break-word}
+.grande{font:600 40px/1 "Bricolage Grotesque",system-ui,sans-serif;display:block;margin:6px 0}
+.drawer{position:fixed;inset:0;background:rgba(18,48,43,.55);z-index:20;display:flex;justify-content:flex-end;max-width:440px;margin:0 auto}
+.drawer-in{background:var(--crema);width:88%;max-width:330px;height:100%;padding:16px 12px 20px;overflow-y:auto}
+.drawer .x{width:44px;height:44px;border-radius:50%;background:var(--menta);font-size:20px;margin:0 0 10px;padding:0}
+.drawer nav a{display:flex;align-items:center;min-height:50px;padding:10px 8px;border-radius:12px;font-weight:600;color:var(--tinta);text-decoration:none;font-size:16px}
+.drawer nav a:hover,.drawer nav a:focus-visible{background:var(--menta)}
+.drawer .btn{margin-top:12px}
+.opcion{display:flex;gap:10px;align-items:center;font-size:16px;margin:0 0 10px}
+select{width:100%;min-height:48px;padding:10px 14px;font:400 17px/24px Figtree,system-ui,sans-serif;border:2px solid var(--borde-s);border-radius:8px;background:#fff;color:var(--tinta)}
+.opcion input{width:auto;min-height:0;margin:0}
 </style>
 </head>
 <body>
 <main>
-  <header class="cabecera">
+  <header class="cabecera" id="cabecera-login">
     <svg class="isologo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 711.85 156.25" role="img" aria-labelledby="t"><title>Bien Visto</title><rect width="711.85" height="156.25" rx="78.12" fill="#FBF6EC"/><g transform="translate(22.49 4.52) scale(0.52)"><path fill="#0E6B5C" d="M62 163 L62 78 A16 16 0 0 0 30 78 L30 163 A16 16 0 0 0 62 163 Z"/><path fill="#0E6B5C" fill-rule="evenodd" d="M30 163 A59 59 0 1 1 148 163 A59 59 0 1 1 30 163 Z M62 163 A27 27 0 1 0 116 163 A27 27 0 1 0 62 163 Z"/><path fill="#F2A71B" d="M159.53 150 L197.35 215.5 A15 15 0 0 0 223.33 215.5 L298.96 84.5 A15 15 0 0 0 272.98 69.5 L210.34 178 L185.51 135 A15 15 0 0 0 159.53 150 Z"/></g><g transform="translate(212.08 118.25) scale(0.5)"><path fill="#12302B" transform="translate(0 0)" d="M0 -59V-148.68C0 -155.86 5.82 -161.68 13 -161.68C20.18 -161.68 26 -155.86 26 -148.68V-108.97C35.91 -115.92 47.98 -120 61 -120C94.69 -120 122 -92.69 122 -59C122 -25.31 94.69 2 61 2C27.31 2 0 -25.31 0 -59ZM26.78 -59C26.78 -40.1 42.1 -24.78 61 -24.78C79.9 -24.78 95.22 -40.1 95.22 -59C95.22 -77.9 79.9 -93.22 61 -93.22C42.1 -93.22 26.78 -77.9 26.78 -59Z"/><path fill="#12302B" transform="translate(137.84 0)" d="M26 -11.8C26 -4.62 20.18 1.2 13 1.2C5.82 1.2 0 -4.62 0 -11.8V-106.2C0 -113.38 5.82 -119.2 13 -119.2C20.18 -119.2 26 -113.38 26 -106.2ZM-2.08 -146.5C-2.08 -154.83 4.67 -161.58 13 -161.58C21.33 -161.58 28.08 -154.83 28.08 -146.5C28.08 -138.17 21.33 -131.42 13 -131.42C4.67 -131.42 -2.08 -138.17 -2.08 -146.5Z"/><path fill="#12302B" transform="translate(179.69 0)" d="M121.11 -69.39C122.39 -61.99 122.29 -54.41 120.82 -47.04H28.94C30.71 -42.28 33.57 -37.86 37.44 -34.18C48.76 -23.44 65.9 -21.72 79.13 -29.98C85.4 -33.9 93.66 -32 97.58 -25.73C101.51 -19.45 99.6 -11.19 93.33 -7.27C69.75 7.47 39.19 4.39 19.01 -14.75C-1.16 -33.89 -5.83 -64.25 7.65 -88.57C21.13 -112.89 49.35 -125.02 76.27 -118.06C99.78 -111.98 117.1 -92.69 121.11 -69.39ZM93.07 -70.96C89.24 -81.2 80.63 -89.27 69.57 -92.13C54.47 -96.04 38.64 -89.24 31.07 -75.6C30.24 -74.09 29.52 -72.54 28.93 -70.96H93.07Z"/><path fill="#12302B" transform="translate(312.49 0)" d="M26 -11.8C26 -4.62 20.18 1.2 13 1.2C5.82 1.2 0 -4.62 0 -11.8V-106.2C0 -113.38 5.82 -119.2 13 -119.2C17.76 -119.2 21.92 -116.64 24.19 -112.83C31.72 -117.38 40.55 -120 50 -120C77.61 -120 100 -97.61 100 -70V-11.8C100 -4.62 94.18 1.2 87 1.2C79.82 1.2 74 -4.62 74 -11.8V-70C74 -83.25 63.25 -94 50 -94C36.75 -94 26 -83.25 26 -70Z"/><path fill="#12302B" transform="translate(456.15 0)" d="M1.45 -101.05 52.49 -5.05C54.63 -1.02 58.83 1.5 63.4 1.5C67.96 1.5 72.16 -1.02 74.3 -5.05L125.34 -101.05C128.54 -107.07 126.26 -114.55 120.24 -117.75C114.21 -120.96 106.73 -118.67 103.53 -112.65L63.39 -37.16L23.25 -112.65C19.97 -118.51 12.6 -120.67 6.68 -117.51C0.75 -114.36 -1.57 -107.05 1.45 -101.05Z"/><path fill="#12302B" transform="translate(593.63 0)" d="M26 -11.8C26 -4.62 20.18 1.2 13 1.2C5.82 1.2 0 -4.62 0 -11.8V-106.2C0 -113.38 5.82 -119.2 13 -119.2C20.18 -119.2 26 -113.38 26 -106.2ZM-2.08 -146.5C-2.08 -154.83 4.67 -161.58 13 -161.58C21.33 -161.58 28.08 -154.83 28.08 -146.5C28.08 -138.17 21.33 -131.42 13 -131.42C4.67 -131.42 -2.08 -138.17 -2.08 -146.5Z"/><path fill="#12302B" transform="translate(633.81 0)" d="M67.33 -104.48C71.15 -98.82 69.66 -91.15 64 -87.33C58.34 -83.51 50.67 -85 46.85 -90.66C44.05 -94.82 38.7 -96.43 34.07 -94.5C29.44 -92.57 26.82 -87.64 27.81 -82.72C28.79 -77.81 33.11 -74.27 38.12 -74.27L38.13 -74.27C56.63 -74.27 72.47 -60.98 75.68 -42.76C78.89 -24.54 68.56 -6.64 51.17 -0.31C33.79 6.02 14.36 -1.05 5.11 -17.07C1.76 -22.97 3.8 -30.47 9.68 -33.86C15.55 -37.25 23.06 -35.27 26.5 -29.42C29.76 -23.78 36.6 -21.29 42.72 -23.52C48.85 -25.75 52.49 -32.06 51.35 -38.47C50.22 -44.89 44.65 -49.57 38.13 -49.57C21.35 -49.57 6.89 -61.41 3.59 -77.87C0.3 -94.33 9.07 -110.82 24.56 -117.29C40.05 -123.76 57.95 -118.4 67.33 -104.48Z"/><path fill="#12302B" transform="translate(721.98 0)" d="M2 -95.28C-4.61 -95.28 -9.96 -100.63 -9.96 -107.24C-9.96 -113.85 -4.61 -119.2 2 -119.2H16.22C17.35 -125.23 22.64 -129.8 29 -129.8C35.36 -129.8 40.65 -125.23 41.78 -119.2H63C69.61 -119.2 74.96 -113.85 74.96 -107.24C74.96 -100.63 69.61 -95.28 63 -95.28H42V-43.8C42 -33.31 50.51 -24.8 61 -24.8C68.18 -24.8 74 -18.98 74 -11.8C74 -4.62 68.18 1.2 61 1.2C36.15 1.2 16 -18.95 16 -43.8V-95.28Z"/><path fill="#12302B" transform="translate(793.55 0)" d="M0 -59C0 -92.69 27.31 -120 61 -120C94.69 -120 122 -92.69 122 -59C122 -25.31 94.69 2 61 2C27.31 2 0 -25.31 0 -59ZM26.78 -59C26.78 -40.1 42.1 -24.78 61 -24.78C79.9 -24.78 95.22 -40.1 95.22 -59C95.22 -77.9 79.9 -93.22 61 -93.22C42.1 -93.22 26.78 -77.9 26.78 -59Z"/></g></svg>
   </header>
   <p class="etiqueta">Acceso para vendedores</p>
@@ -118,127 +158,36 @@ textarea{min-height:80px}
   </section>
 
   <section id="paso-sesion" class="paso" hidden>
-    <div class="vista" id="v-inicio">
-      <h2>Hola, <span id="nombre-vend"></span></h2>
-      <div class="tarjeta">
-        <p class="etiqueta">Dinero por entregar</p>
-        <p class="num" id="custodia">—</p>
-        <p id="custodia-tope"></p>
-      </div>
-      <div class="tarjeta">
-        <p class="etiqueta">Plazo de entrega</p>
-        <p id="plazo"></p>
-      </div>
-      <div id="aviso-inicio" class="aviso" hidden></div>
-    </div>
+    <header class="bar">
+      <button type="button" id="btn-atras" class="bk" hidden>&larr; Atrás</button>
+      <a href="#/hoy" aria-label="Ir al inicio" style="display:inline-flex;line-height:0"><svg class="iso" viewBox="0 41 311 203" aria-hidden="true" focusable="false"><path fill="#0E6B5C" d="M62 163 L62 78 A16 16 0 0 0 30 78 L30 163 A16 16 0 0 0 62 163 Z"/><path fill="#0E6B5C" fill-rule="evenodd" d="M30 163 A59 59 0 1 1 148 163 A59 59 0 1 1 30 163 Z M62 163 A27 27 0 1 0 116 163 A27 27 0 1 0 62 163 Z"/><path fill="#F2A71B" d="M159.53 150 L197.35 215.5 A15 15 0 0 0 223.33 215.5 L298.96 84.5 A15 15 0 0 0 272.98 69.5 L210.34 178 L185.51 135 A15 15 0 0 0 159.53 150 Z"/></svg></a>
+      <span class="grow"></span>
+      <button type="button" id="btn-menu" class="hmb" aria-haspopup="dialog" aria-controls="cajon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Menú</button>
+    </header>
 
-    <div class="vista" id="v-ventas" hidden>
-      <h2>Mis ventas</h2>
-      <ul id="lista-ventas" class="lista"></ul>
-      <p id="msg-ventas" class="msg" role="status"></p>
-    </div>
+    <div id="app" tabindex="-1"></div>
 
-    <div class="vista" id="v-detalle" hidden>
-      <button type="button" id="btn-volver-ventas" class="sec">Volver a mis ventas</button>
-      <div id="detalle" class="bloque"></div>
-      <form id="form-revision" novalidate hidden>
-        <div class="campo">
-          <label for="referencia">Referencia de transferencia (solo si te pagaron por transferencia)</label>
-          <input id="referencia" name="referencia" maxlength="100">
-        </div>
-        <button id="btn-revision" type="submit">Enviar a revisión</button>
-      </form>
-      <button type="button" id="btn-anular" class="sec" hidden>Pedir anulación</button>
-      <p id="msg-detalle" class="msg" role="status"></p>
-    </div>
-
-    <div class="vista" id="v-vender" hidden>
-      <h2>Registrar venta</h2>
-      <form id="form-venta" novalidate>
-        <div class="campo">
-          <label for="v-negocio">Nombre del negocio</label>
-          <input id="v-negocio" maxlength="200">
-        </div>
-        <div class="campo">
-          <label for="v-contacto">Persona de contacto (opcional)</label>
-          <input id="v-contacto" maxlength="120">
-        </div>
-        <div class="campo">
-          <label for="v-whatsapp">WhatsApp del negocio (opcional)</label>
-          <input id="v-whatsapp" inputmode="tel" placeholder="Ej. 33 1234 5678">
-        </div>
-        <div class="campo">
-          <label for="v-metodo">Forma de pago</label>
-          <select id="v-metodo">
-            <option value="efectivo">Efectivo</option>
-            <option value="transferencia">Transferencia</option>
-          </select>
-        </div>
-        <p class="etiqueta">Displays que vendes</p>
-        <div id="folios-libres" class="campo"></div>
-        <button id="btn-vender" type="submit">Registrar venta</button>
-      </form>
-      <p id="msg-vender" class="msg" role="status"></p>
-    </div>
-
-    <div class="vista" id="v-displays" hidden>
-      <h2>Mis displays</h2>
-      <ul id="lista-displays" class="lista"></ul>
-      <p id="msg-displays" class="msg" role="status"></p>
-    </div>
-
-    <div class="vista" id="v-solicitudes" hidden>
-      <h2>Pedir cambio</h2>
-      <form id="form-solicitud" novalidate>
-        <div class="campo">
-          <label for="s-tipo">¿Qué necesitas?</label>
-          <select id="s-tipo">
-            <option value="reponer">Reponer el display</option>
-            <option value="cambiar">Cambiarlo de negocio</option>
-          </select>
-        </div>
-        <div class="campo">
-          <label for="s-folio">Display</label>
-          <select id="s-folio"></select>
-        </div>
-        <div id="campos-cambiar" hidden>
-          <div class="campo">
-            <label for="s-nuevo">Nombre del nuevo negocio</label>
-            <input id="s-nuevo" maxlength="200">
-          </div>
-          <div class="campo">
-            <label for="s-url">Enlace de reseña de Google del nuevo negocio</label>
-            <input id="s-url" type="url" placeholder="https://...">
-          </div>
-        </div>
-        <div class="campo">
-          <label for="s-motivo">Motivo (opcional)</label>
-          <input id="s-motivo" maxlength="200">
-        </div>
-        <div class="campo">
-          <label for="s-nota">Nota (opcional)</label>
-          <textarea id="s-nota" maxlength="500"></textarea>
-        </div>
-        <button id="btn-solicitar" type="submit">Enviar solicitud</button>
-      </form>
-      <p id="msg-solicitud" class="msg" role="status"></p>
-    </div>
-
-    <div class="vista" id="v-cuenta" hidden>
-      <h2>Tu cuenta</h2>
-      <p class="guia">Sesión iniciada como <span id="cuenta-nombre"></span>.</p>
-      <button id="btn-salir" class="sec" type="button">Cerrar sesión</button>
-      <a class="boton-soporte" href="https://wa.me/522201435851?text=Hola%2C%20soy%20vendedor%20de%20Bien%20Visto%20y%20necesito%20ayuda%20con%20mi%20panel." target="_blank" rel="noopener">Hablar con soporte</a>
-    </div>
-
-    <nav id="tabs" class="tabs" aria-label="Secciones">
-      <button type="button" data-vista="inicio">Inicio</button>
-      <button type="button" data-vista="ventas">Ventas</button>
-      <button type="button" data-vista="vender">Vender</button>
-      <button type="button" data-vista="displays">Displays</button>
-      <button type="button" data-vista="solicitudes">Pedir</button>
-      <button type="button" data-vista="cuenta">Cuenta</button>
+    <nav class="tabs" aria-label="Secciones">
+      <button type="button" data-tab="hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Inicio</button>
+      <button type="button" data-tab="varios"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M14 17.5h7M17.5 14v7"/></svg>Varios</button>
+      <button type="button" data-tab="displays"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg>Mis displays</button>
+      <button type="button" data-tab="saldo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16 14.5h2"/></svg>Mi saldo</button>
     </nav>
+
+    <div id="cajon" class="drawer" hidden>
+      <div class="drawer-in">
+        <button type="button" id="btn-cerrar-cajon" class="x" aria-label="Cerrar menú">&times;</button>
+        <nav>
+          <a href="#/hoy">Inicio</a>
+          <a href="#/displays">Mis displays</a>
+          <a href="#/saldo">Mi saldo</a>
+          <a href="#/ventas">Mis ventas</a>
+          <a href="#/varios">Varios</a>
+          <a href="#/cuenta">Mi cuenta</a>
+        </nav>
+        <button type="button" id="btn-salir" class="btn s">Cerrar sesión</button>
+      </div>
+    </div>
   </section>
   <footer class="pie">
     <p>¿Quieres vender Bien Visto? <a href="https://bienvisto.com.mx/vendedores">Conoce el programa</a>.</p>
@@ -262,6 +211,7 @@ textarea{min-height:80px}
 
   function mostrar(id) {
     for (const s of document.querySelectorAll(".paso")) s.hidden = s.id !== id;
+    enPanel = id === "paso-sesion";
     document.body.classList.toggle("con-tabs", id === "paso-sesion");
     if (id === "paso-sesion") entrarPanel();
   }
@@ -373,38 +323,80 @@ textarea{min-height:80px}
   $("btn-cambiar").addEventListener("click", volverACorreo);
   // ===== Panel del vendedor =====
   const $$ = (sel) => document.querySelectorAll(sel);
+  const app = $("app");
   const dinero = (n) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n) || 0);
-  const ESTADO_TXT = { pendiente: "Pendiente", rev: "En revisión", cobrada: "Cobrada", entregada: "Entregada", anulada: "Anulada" };
-  const DISPLAY_TXT = { libre: "Libre", activo: "Activo" };
+  const enc = (s) => encodeURIComponent(s);
+  const WA_AYUDA = "https://wa.me/522201435851?text=" + encodeURIComponent("Hola, soy vendedor de Bien Visto y necesito ayuda con mi panel.");
+  const ESTADOS = {
+    libre: ["Libre", "g"], activo: ["Activo", "v"], retirado: ["Retirado", "r"],
+    pendiente: ["Pendiente", ""], rev: ["En revisión", ""], cobrada: ["Cobrada", "v"],
+    entregada: ["Entregada", "v"], anulada: ["Anulada", "r"],
+  };
+  const ICONO_NFC = '<svg viewBox="0 0 24 24" fill="none" stroke="#12302B" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1.4" fill="#12302B"/><path d="M10 8.5a5 5 0 0 1 0 7M13.5 5.8a9 9 0 0 1 0 12.4M17 3.2a13 13 0 0 1 0 17.6"/></svg>';
+
   let nombreVend = "";
+  let enPanel = false;
   let ventasCache = [];
-  let ventaActual = null;
+  let aviso = null;
+  let turno = 0;
 
   function el(tag, props, hijos) {
     const n = document.createElement(tag);
     for (const k in props || {}) {
-      if (k === "texto") n.textContent = props[k];
-      else if (k === "clase") n.className = props[k];
-      else n.setAttribute(k, props[k]);
+      const v = props[k];
+      if (k === "texto") n.textContent = v;
+      else if (k === "clase") n.className = v;
+      else if (k === "on") { for (const ev in v) n.addEventListener(ev, v[ev]); }
+      else if (k === "checked") n.checked = !!v;
+      else n.setAttribute(k, v);
     }
     for (const h of hijos || []) n.append(h);
     return n;
   }
 
+  // Solo recibe SVG fijos del código, nunca datos del servidor.
+  function icono(svgFijo) {
+    const t = document.createElement("template");
+    t.innerHTML = svgFijo.trim();
+    return t.content.firstChild;
+  }
+
+  function chip(estado) {
+    const [txt, cls] = ESTADOS[estado] || [estado, "g"];
+    return el("span", { clase: ("chip " + cls).trim(), texto: txt });
+  }
+
+  function campo(etiqueta, control) {
+    return el("label", { clase: "campo" }, [el("span", { clase: "lbl", texto: etiqueta }), control]);
+  }
+
+  function menuItem(txt, href) {
+    return el("button", { type: "button", clase: "item", on: { click: () => ir(href) } }, [el("b", { texto: txt })]);
+  }
+
+  function conAviso(nodos) {
+    if (aviso) { nodos.unshift(el("div", { clase: "aviso", texto: aviso })); aviso = null; }
+    return nodos;
+  }
+
+  const ir = (ruta) => { location.hash = ruta; };
+  const ruta = () => location.hash.replace(/^#\/?/, "").split("/").filter(Boolean).map((p) => decodeURIComponent(p));
+
   function sesionCaducada() {
+    enPanel = false;
     volverACorreo();
     texto($("msg-correo"), "Tu sesión venció. Entra de nuevo con tu correo.", "err");
   }
 
-  async function getJSON(ruta) {
-    const res = await fetch(ruta);
+  async function getJSON(rutaApi) {
+    const res = await fetch(rutaApi);
     if (res.status === 401) { sesionCaducada(); return null; }
     if (!res.ok) throw new Error("http " + res.status);
     return res.json();
   }
 
-  async function postJSON(ruta, cuerpo) {
-    const res = await fetch(ruta, {
+  async function postJSON(rutaApi, cuerpo) {
+    const res = await fetch(rutaApi, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cuerpo || {}),
@@ -419,265 +411,449 @@ textarea{min-height:80px}
     return (datos && datos.error) || MSG_ERROR_GENERAL;
   }
 
-  function mostrarVista(nombre) {
-    for (const v of $$(".vista")) v.hidden = v.id !== "v-" + nombre;
-    for (const b of $$("#tabs button")) {
-      if (b.dataset.vista === nombre) b.setAttribute("aria-current", "page");
+  const PANTALLAS = {
+    hoy: pHoy, vender: pVender, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
+    ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, p: pProximamente,
+  };
+  const PESTANA = { hoy: "hoy", vender: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
+
+  async function render() {
+    if (!enPanel) return;
+    const r = ruta();
+    const pantalla = r.length ? r[0] : "hoy";
+    const fn = PANTALLAS[pantalla] || pHoy;
+    const mi = ++turno;
+    const pestana = PESTANA[pantalla] || "varios";
+    for (const b of $$(".tabs button")) {
+      if (b.dataset.tab === pestana) b.setAttribute("aria-current", "page");
       else b.removeAttribute("aria-current");
     }
-    const cargas = {
-      inicio: cargarInicio,
-      ventas: cargarVentas,
-      vender: cargarLibres,
-      displays: cargarDisplays,
-      solicitudes: cargarActivos,
-    };
-    if (cargas[nombre]) cargas[nombre]();
+    $("btn-atras").hidden = pantalla === "hoy";
+    app.replaceChildren(el("p", { clase: "hint", texto: "Cargando…" }));
     window.scrollTo(0, 0);
+    try {
+      const nodos = await fn(r.slice(1));
+      if (mi === turno && nodos) app.replaceChildren(...nodos);
+    } catch (_) {
+      if (mi === turno) app.replaceChildren(el("p", { clase: "msg err", texto: MSG_ERROR_RED }));
+    }
   }
 
   async function entrarPanel() {
+    enPanel = true;
     try {
       const d = await getJSON("/api/vendedor/yo");
-      if (d) {
-        nombreVend = d.nombre || "";
-        $("nombre-vend").textContent = nombreVend.split(" ")[0] || "";
-        $("cuenta-nombre").textContent = nombreVend;
-      }
-    } catch (_) { /* el panel sigue; las pantallas muestran su propio error */ }
-    mostrarVista("inicio");
+      if (d) nombreVend = d.nombre || "";
+    } catch (_) { /* la pantalla muestra su propio error */ }
+    if (!location.hash || location.hash === "#") ir("#/hoy");
+    render();
   }
 
-  async function cargarInicio() {
-    const aviso = $("aviso-inicio");
-    aviso.hidden = true;
-    try {
-      const d = await getJSON("/api/vendedor/saldo");
-      if (!d) return;
-      $("custodia").textContent = dinero(d.custodia);
-      $("custodia-tope").textContent = "Tu tope es " + dinero(d.tope) + ". Si llegas al tope, entrega antes de activar más displays.";
-      let plazo;
-      if (d.horas_restantes === null) plazo = "No tienes ventas cobradas pendientes de entregar.";
-      else if (d.plazo_vencido) plazo = "Tu plazo de entrega venció. Entrega lo cobrado para poder activar displays nuevos.";
-      else plazo = "Te quedan " + d.horas_restantes + " horas para entregar lo cobrado.";
-      $("plazo").textContent = plazo;
-      if (d.impago) {
-        aviso.textContent = "Tienes un adeudo por impago. No puedes activar displays nuevos hasta resolverlo.";
-        aviso.className = "aviso alerta";
-        aviso.hidden = false;
-      }
-    } catch (_) {
-      $("custodia").textContent = "—";
-      $("plazo").textContent = MSG_ERROR_RED;
-    }
-  }
-
-  async function cargarVentas() {
-    const ul = $("lista-ventas");
-    ul.replaceChildren();
-    $("msg-ventas").textContent = "";
-    try {
-      const d = await getJSON("/api/vendedor/ventas");
-      if (!d) return;
-      ventasCache = d.ventas || [];
-      if (!ventasCache.length) { $("msg-ventas").textContent = "Aún no tienes ventas registradas."; return; }
-      for (const v of ventasCache) {
-        const boton = el("button", { type: "button", clase: "item" }, [
-          el("strong", { texto: v.negocio }),
-          el("div", {}, [el("span", { clase: "estado " + v.estado, texto: ESTADO_TXT[v.estado] || v.estado })]),
-          el("span", { texto: dinero(v.total) + " · " + (v.displays || 0) + " display(s) · " + String(v.created_at || "").slice(0, 10) }),
-        ]);
-        boton.addEventListener("click", () => abrirDetalle(v.id));
-        ul.append(el("li", {}, [boton]));
-      }
-    } catch (_) {
-      $("msg-ventas").textContent = MSG_ERROR_RED;
-      $("msg-ventas").className = "msg err";
-    }
-  }
-
-  function abrirDetalle(id) {
-    const v = ventasCache.find((x) => x.id === id);
-    if (!v) return;
-    ventaActual = v;
-    $("msg-detalle").textContent = "";
-    $("msg-detalle").className = "msg";
-    $("detalle").replaceChildren(
-      el("div", { clase: "tarjeta" }, [
-        el("strong", { texto: v.negocio }),
-        el("p", { texto: "Total: " + dinero(v.total) }),
-        el("p", { texto: "Por entregar: " + dinero(v.a_entregar) }),
-        el("p", { texto: "Ya entregado: " + dinero(v.entregado) }),
-        el("p", { texto: "Displays: " + (v.displays || 0) }),
-        el("p", {}, [el("span", { clase: "estado " + v.estado, texto: ESTADO_TXT[v.estado] || v.estado })]),
-      ])
+  async function pHoy() {
+    const [s, d] = await Promise.all([getJSON("/api/vendedor/saldo"), getJSON("/api/vendedor/displays")]);
+    if (!s || !d) return null;
+    const libres = (d.displays || []).filter((x) => x.estado === "libre").length;
+    const primer = nombreVend.split(" ")[0] || "";
+    const plazo = s.horas_restantes === null ? "Sin plazo corriendo"
+      : s.plazo_vencido ? "Plazo vencido"
+      : s.horas_restantes + " h para entregar";
+    const folioInput = el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", "aria-label": "Folio del display" });
+    const nodos = [el("h2", { texto: "Hola, " + primer })];
+    if (s.impago) nodos.push(el("div", { clase: "aviso alerta", texto: "Tienes un adeudo por impago. No puedes activar displays nuevos." }));
+    nodos.push(
+      el("button", { type: "button", clase: "hero", on: { click: () => ir("#/vender") } }, [
+        el("span", { clase: "hero-ico" }, [icono(ICONO_NFC)]),
+        el("span", {}, [el("b", { texto: "Vender un display" }), el("small", { texto: "Acerca tu celular al display para empezar." })]),
+      ]),
+      el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/p/" + enc("Escanear el QR del display")) } }, ["Escanear el QR del display"]),
+      el("span", { clase: "lbl", texto: "¿Prefieres escribir el folio?" }),
+      el("form", { novalidate: "", on: { submit: (e) => {
+        e.preventDefault();
+        const folio = folioInput.value.trim().toUpperCase();
+        if (folio.length === 4) ir("#/vender/" + enc(folio));
+      } } }, [folioInput]),
+      el("p", { clase: "hint", texto: "Son 4 caracteres y abre solo." }),
+      el("div", { clase: "dos" }, [
+        el("div", { clase: "tarjeta" }, [el("b", { texto: "Debes entregar " + dinero(s.custodia) }), el("span", { texto: plazo })]),
+        el("div", { clase: "tarjeta" }, [el("b", { texto: libres + (libres === 1 ? " libre" : " libres") }), el("span", { texto: "en tu inventario" })]),
+      ]),
     );
-    $("form-revision").hidden = v.estado !== "pendiente";
-    $("btn-anular").hidden = !(["pendiente", "rev", "cobrada"].includes(v.estado) && Number(v.entregado || 0) === 0);
-    mostrarVista("detalle");
+    return conAviso(nodos);
   }
 
-  $("form-revision").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const msg = $("msg-detalle");
-    $("btn-revision").disabled = true;
-    try {
-      const { status, datos } = await postJSON("/api/vendedor/ventas/" + ventaActual.id + "/revision", { referencia: $("referencia").value.trim() });
-      if (status === 200 && datos && datos.success) {
-        mostrarVista("ventas");
-        await cargarVentas();
-        texto($("msg-ventas"), "Venta enviada a revisión.", "ok");
-      } else if (status !== 401) {
-        texto(msg, errorDe(datos), "err");
-      }
-    } catch (_) {
-      texto(msg, MSG_ERROR_RED, "err");
-    } finally {
-      $("btn-revision").disabled = false;
-    }
-  });
-
-  $("btn-anular").addEventListener("click", async () => {
-    const msg = $("msg-detalle");
-    $("btn-anular").disabled = true;
-    try {
-      const { status, datos } = await postJSON("/api/vendedor/solicitudes", { tipo: "anular", venta_id: ventaActual.id });
-      if (status === 201 && datos && datos.success) texto(msg, "Solicitud de anulación enviada.", "ok");
-      else if (status !== 401) texto(msg, errorDe(datos), "err");
-    } catch (_) {
-      texto(msg, MSG_ERROR_RED, "err");
-    } finally {
-      $("btn-anular").disabled = false;
-    }
-  });
-
-  async function cargarDisplays() {
-    const ul = $("lista-displays");
-    ul.replaceChildren();
-    $("msg-displays").textContent = "";
-    try {
-      const d = await getJSON("/api/vendedor/displays");
-      if (!d) return;
-      const lista = d.displays || [];
-      if (!lista.length) { $("msg-displays").textContent = "Aún no tienes displays asignados."; return; }
-      for (const f of lista) {
-        ul.append(el("li", {}, [
-          el("div", { clase: "tarjeta" }, [
-            el("strong", { texto: f.folio }),
-            el("p", { texto: (DISPLAY_TXT[f.estado] || f.estado) + " · " + (f.negocio_asignado || "Sin negocio asignado") }),
+  async function pDisplays() {
+    const d = await getJSON("/api/vendedor/displays");
+    if (!d) return null;
+    const lista = d.displays || [];
+    const ul = el("ul", { clase: "lista" });
+    const pintar = (filtro) => {
+      const f = (filtro || "").toUpperCase();
+      ul.replaceChildren(...lista.filter((x) => !f || x.folio.includes(f)).map((x) =>
+        el("li", {}, [
+          el("button", { type: "button", clase: "item", on: { click: () => ir("#/d/" + enc(x.folio)) } }, [
+            el("div", { clase: "fila" }, [el("span", { clase: "folio sm", texto: x.folio }), chip(x.estado)]),
+            el("span", { texto: x.negocio_asignado || "Sin negocio asignado" }),
           ]),
-        ]));
-      }
-    } catch (_) {
-      $("msg-displays").textContent = MSG_ERROR_RED;
-      $("msg-displays").className = "msg err";
-    }
+        ])
+      ));
+    };
+    pintar("");
+    const buscar = el("input", { placeholder: "Buscar por folio", "aria-label": "Buscar por folio", on: { input: () => pintar(buscar.value.trim()) } });
+    if (!lista.length) return conAviso([el("h2", { texto: "Mis displays" }), el("p", { clase: "hint", texto: "Aún no tienes displays asignados." })]);
+    return conAviso([el("h2", { texto: "Mis displays" }), buscar, ul]);
   }
 
-  async function cargarLibres() {
-    const cont = $("folios-libres");
-    cont.replaceChildren();
-    try {
-      const d = await getJSON("/api/vendedor/displays");
-      if (!d) return;
-      const libres = (d.displays || []).filter((x) => x.estado === "libre");
-      $("btn-vender").disabled = !libres.length;
-      if (!libres.length) { cont.append(el("p", { texto: "No tienes displays libres para vender." })); return; }
-      for (const f of libres) {
-        cont.append(el("label", { clase: "opcion" }, [el("input", { type: "checkbox", value: f.folio, name: "folio" }), f.folio]));
-      }
-    } catch (_) {
-      texto($("msg-vender"), MSG_ERROR_RED, "err");
+  async function pDetalle([folio]) {
+    const d = await getJSON("/api/vendedor/displays");
+    if (!d) return null;
+    const f = (d.displays || []).find((x) => x.folio === folio);
+    if (!f) return [el("p", { clase: "msg err", texto: "No encontramos ese display." })];
+    const botones = [];
+    if (f.estado === "activo") {
+      botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/reponer") } }, ["Pedir reposición"]));
+      botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/cambiar") } }, ["Cambiar de negocio"]));
     }
+    if (f.estado === "libre") {
+      botones.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/vender/" + enc(f.folio)) } }, ["Activar display"]));
+    }
+    return [
+      el("div", { clase: "tarjeta centro" }, [
+        el("span", { clase: "lbl", texto: "Display" }),
+        el("div", { clase: "folio", texto: f.folio }),
+        el("div", { clase: "fila" }, [chip(f.estado)]),
+      ]),
+      el("dl", { clase: "kv" }, [el("dt", { texto: "Negocio" }), el("dd", { texto: f.negocio_asignado || "—" })]),
+      ...botones,
+    ];
   }
 
-  $("form-venta").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const msg = $("msg-vender");
-    texto(msg, "", "ok");
-    const folios = [...$("folios-libres").querySelectorAll("input:checked")].map((i) => i.value);
-    const negocio = $("v-negocio").value.trim();
-    if (!negocio) return texto(msg, "Escribe el nombre del negocio.", "err");
-    if (!folios.length) return texto(msg, "Elige al menos un display.", "err");
-    $("btn-vender").disabled = true;
-    try {
-      const cuerpo = {
-        negocio,
-        contacto: $("v-contacto").value.trim(),
-        whatsapp: $("v-whatsapp").value.trim(),
-        metodo: $("v-metodo").value,
-        folios,
-      };
-      const { status, datos } = await postJSON("/api/vendedor/ventas", cuerpo);
-      if (status === 201 && datos && datos.success) {
-        $("form-venta").reset();
-        await cargarLibres();
-        texto(msg, "Venta registrada. Quedó pendiente: envíala a revisión desde Ventas.", "ok");
-      } else if (status !== 401) {
-        texto(msg, errorDe(datos), "err");
+  async function pSolicitar([folio, tipo]) {
+    const cambiar = tipo === "cambiar";
+    const msg = el("p", { clase: "msg", role: "status" });
+    const nuevo = el("input", { maxlength: "200" });
+    const url = el("input", { type: "url", placeholder: "https://..." });
+    const motivo = el("input", { maxlength: "200" });
+    const nota = el("textarea", { maxlength: "500" });
+    const boton = el("button", { type: "submit", clase: "btn p" }, [cambiar ? "Enviar solicitud de cambio" : "Enviar solicitud de reposición"]);
+    const form = el("form", { novalidate: "" }, [
+      el("span", { clase: "lbl", texto: "Display" }),
+      el("div", { clase: "folio sm", texto: folio }),
+      ...(cambiar ? [campo("Nombre del nuevo negocio", nuevo), campo("Enlace de reseña de Google del nuevo negocio", url)] : []),
+      campo("Motivo (opcional)", motivo),
+      campo("Nota (opcional)", nota),
+      boton,
+      msg,
+    ]);
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      texto(msg, "", "ok");
+      const cuerpo = { tipo: cambiar ? "cambiar" : "reponer", folio, motivo: motivo.value.trim(), nota: nota.value.trim() };
+      if (cambiar) {
+        cuerpo.nuevo_negocio = nuevo.value.trim();
+        cuerpo.url_resena = url.value.trim();
+        if (!cuerpo.nuevo_negocio) return texto(msg, "Escribe el nombre del nuevo negocio.", "err");
+        if (!/^https:\/\//.test(cuerpo.url_resena)) return texto(msg, "El enlace debe empezar con https://", "err");
       }
-    } catch (_) {
-      texto(msg, MSG_ERROR_RED, "err");
-    } finally {
-      $("btn-vender").disabled = false;
-    }
-  });
-
-  async function cargarActivos() {
-    const sel = $("s-folio");
-    sel.replaceChildren();
-    try {
-      const d = await getJSON("/api/vendedor/displays");
-      if (!d) return;
-      const activos = (d.displays || []).filter((x) => x.estado === "activo");
-      $("btn-solicitar").disabled = !activos.length;
-      if (!activos.length) { sel.append(el("option", { value: "", texto: "No tienes displays activos" })); return; }
-      for (const f of activos) {
-        sel.append(el("option", { value: f.folio, texto: f.folio + (f.negocio_asignado ? " · " + f.negocio_asignado : "") }));
+      boton.disabled = true;
+      try {
+        const { status, datos } = await postJSON("/api/vendedor/solicitudes", cuerpo);
+        if (status === 201 && datos && datos.success) {
+          form.reset();
+          texto(msg, "Solicitud enviada.", "ok");
+        } else if (status !== 401) {
+          texto(msg, errorDe(datos), "err");
+        }
+      } catch (_) {
+        texto(msg, MSG_ERROR_RED, "err");
+      } finally {
+        boton.disabled = false;
       }
-    } catch (_) {
-      texto($("msg-solicitud"), MSG_ERROR_RED, "err");
-    }
+    });
+    return [el("h2", { texto: cambiar ? "Cambiar de negocio" : "Pedir reposición" }), form];
   }
 
-  function ajustarTipoSolicitud() {
-    $("campos-cambiar").hidden = $("s-tipo").value !== "cambiar";
+  async function pSaldo() {
+    const s = await getJSON("/api/vendedor/saldo");
+    if (!s) return null;
+    const plazo = s.horas_restantes === null ? "No tienes ventas cobradas pendientes de entregar."
+      : s.plazo_vencido ? "Tu plazo de entrega venció. Entrega lo cobrado para activar displays nuevos."
+      : "Te quedan " + s.horas_restantes + " horas para entregar lo cobrado.";
+    const nodos = [
+      el("h2", { texto: "Mi saldo" }),
+      el("div", { clase: "hero" }, [
+        el("span", {}, [
+          el("span", { clase: "lbl", texto: "Debes entregar" }),
+          el("span", { clase: "grande", texto: dinero(s.custodia) }),
+          el("small", { texto: "Tu tope es " + dinero(s.tope) }),
+        ]),
+      ]),
+      el("div", { clase: "tarjeta" }, [el("b", { texto: "Plazo de entrega" }), el("span", { texto: plazo })]),
+    ];
+    if (s.impago) nodos.push(el("div", { clase: "aviso alerta", texto: "Tienes un adeudo por impago. No puedes activar displays nuevos hasta resolverlo." }));
+    nodos.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/p/" + enc("Avisar entrega")) } }, ["Avisar entrega"]));
+    return nodos;
   }
-  $("s-tipo").addEventListener("change", ajustarTipoSolicitud);
 
-  $("form-solicitud").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const msg = $("msg-solicitud");
-    texto(msg, "", "ok");
-    const tipo = $("s-tipo").value;
-    const folio = $("s-folio").value;
-    if (!folio) return texto(msg, "No tienes un display activo para pedir cambios.", "err");
-    const cuerpo = { tipo, folio, motivo: $("s-motivo").value.trim(), nota: $("s-nota").value.trim() };
-    if (tipo === "cambiar") {
-      cuerpo.nuevo_negocio = $("s-nuevo").value.trim();
-      cuerpo.url_resena = $("s-url").value.trim();
-      if (!cuerpo.nuevo_negocio) return texto(msg, "Escribe el nombre del nuevo negocio.", "err");
-      if (!/^https:\/\//.test(cuerpo.url_resena)) return texto(msg, "El enlace de reseña debe empezar con https://", "err");
+  async function pVentas() {
+    const d = await getJSON("/api/vendedor/ventas");
+    if (!d) return null;
+    ventasCache = d.ventas || [];
+    const nodos = [el("h2", { texto: "Mis ventas" })];
+    if (!ventasCache.length) {
+      nodos.push(el("p", { clase: "hint", texto: "Aún no tienes ventas registradas." }));
+    } else {
+      nodos.push(el("ul", { clase: "lista" }, ventasCache.map((v) =>
+        el("li", {}, [
+          el("button", { type: "button", clase: "item", on: { click: () => ir("#/v/" + enc(v.id)) } }, [
+            el("div", { clase: "fila" }, [el("b", { texto: v.negocio }), chip(v.estado)]),
+            el("span", { texto: dinero(v.total) + " · " + (v.displays || 0) + " display(s) · " + String(v.created_at || "").slice(0, 10) }),
+          ]),
+        ])
+      )));
     }
-    $("btn-solicitar").disabled = true;
-    try {
-      const { status, datos } = await postJSON("/api/vendedor/solicitudes", cuerpo);
-      if (status === 201 && datos && datos.success) {
-        $("form-solicitud").reset();
-        ajustarTipoSolicitud();
-        texto(msg, "Solicitud enviada.", "ok");
-      } else if (status !== 401) {
-        texto(msg, errorDe(datos), "err");
+    return conAviso(nodos);
+  }
+
+  async function pVenta([id]) {
+    if (!ventasCache.length) {
+      const d = await getJSON("/api/vendedor/ventas");
+      if (!d) return null;
+      ventasCache = d.ventas || [];
+    }
+    const v = ventasCache.find((x) => x.id === id);
+    if (!v) return [el("p", { clase: "msg err", texto: "No encontramos esa venta." })];
+    const msg = el("p", { clase: "msg", role: "status" });
+    const nodos = [
+      el("h2", { texto: v.negocio }),
+      el("div", { clase: "fila" }, [chip(v.estado)]),
+      el("dl", { clase: "kv" }, [
+        el("dt", { texto: "Total" }), el("dd", { texto: dinero(v.total) }),
+        el("dt", { texto: "Por entregar" }), el("dd", { texto: dinero(v.a_entregar) }),
+        el("dt", { texto: "Ya entregado" }), el("dd", { texto: dinero(v.entregado) }),
+        el("dt", { texto: "Displays" }), el("dd", { texto: String(v.displays || 0) }),
+      ]),
+    ];
+    if (v.estado === "pendiente") {
+      const ref = el("input", { maxlength: "100" });
+      const boton = el("button", { type: "button", clase: "btn p" }, ["Enviar a revisión"]);
+      boton.addEventListener("click", async () => {
+        boton.disabled = true;
+        try {
+          const { status, datos } = await postJSON("/api/vendedor/ventas/" + enc(v.id) + "/revision", { referencia: ref.value.trim() });
+          if (status === 200 && datos && datos.success) {
+            aviso = "Venta enviada a revisión.";
+            ventasCache = [];
+            render();
+          } else if (status !== 401) {
+            texto(msg, errorDe(datos), "err");
+          }
+        } catch (_) {
+          texto(msg, MSG_ERROR_RED, "err");
+        } finally {
+          boton.disabled = false;
+        }
+      });
+      nodos.push(campo("Referencia de transferencia (solo si te pagaron por transferencia)", ref), boton, msg);
+    }
+    if (["pendiente", "rev", "cobrada"].includes(v.estado) && Number(v.entregado || 0) === 0) {
+      const anular = el("button", { type: "button", clase: "btn s" }, ["Pedir anulación"]);
+      anular.addEventListener("click", async () => {
+        anular.disabled = true;
+        try {
+          const { status, datos } = await postJSON("/api/vendedor/solicitudes", { tipo: "anular", venta_id: v.id });
+          if (status === 201 && datos && datos.success) {
+            aviso = "Solicitud de anulación enviada.";
+            render();
+          } else if (status !== 401) {
+            texto(msg, errorDe(datos), "err");
+          }
+        } catch (_) {
+          texto(msg, MSG_ERROR_RED, "err");
+        } finally {
+          anular.disabled = false;
+        }
+      });
+      nodos.push(anular, msg);
+    }
+    return conAviso(nodos);
+  }
+
+  async function pVender([folioPre]) {
+    const d = await getJSON("/api/vendedor/displays");
+    if (!d) return null;
+    const libres = (d.displays || []).filter((x) => x.estado === "libre");
+    const nodos = [el("h2", { texto: "Vender un display" })];
+    if (!libres.length) {
+      nodos.push(el("p", { clase: "hint", texto: "No tienes displays libres para vender." }));
+      return conAviso(nodos);
+    }
+    const msg = el("p", { clase: "msg", role: "status" });
+    let negocioElegido = null;
+    let ventaPendiente = null;
+    let turnoBusqueda = 0;
+    let temporizador = null;
+    const resultados = el("ul", { clase: "lista" });
+    const elegido = el("div", { clase: "tarjeta", hidden: "" });
+    const buscar = el("input", { placeholder: "Ej. Taquería Lupita Zapopan", maxlength: "100", autocomplete: "off", "aria-label": "Buscar negocio" });
+
+    const pintarElegido = () => {
+      elegido.replaceChildren(
+        el("b", { texto: negocioElegido.nombre }),
+        el("span", { texto: negocioElegido.direccion }),
+        el("button", { type: "button", clase: "btn s sm", on: { click: () => { negocioElegido = null; elegido.hidden = true; } } }, ["Cambiar"])
+      );
+      elegido.hidden = false;
+    };
+
+    const buscarNegocio = async (q) => {
+      const mi = ++turnoBusqueda;
+      resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "Buscando…" })]));
+      try {
+        const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q));
+        if (res.status === 401) { sesionCaducada(); return; }
+        const datos = await res.json().catch(() => null);
+        if (mi !== turnoBusqueda) return;
+        resultados.replaceChildren();
+        if (!res.ok) { texto(msg, errorDe(datos), "err"); return; }
+        const lista = (datos && datos.resultados) || [];
+        if (!lista.length) {
+          resultados.append(el("li", {}, [el("span", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
+          return;
+        }
+        for (const r of lista) {
+          resultados.append(el("li", {}, [
+            el("button", { type: "button", clase: "item", on: { click: () => {
+              negocioElegido = r;
+              resultados.replaceChildren();
+              buscar.value = r.nombre;
+              pintarElegido();
+            } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion })]),
+          ]));
+        }
+      } catch (_) {
+        if (mi === turnoBusqueda) texto(msg, MSG_ERROR_RED, "err");
       }
-    } catch (_) {
-      texto(msg, MSG_ERROR_RED, "err");
-    } finally {
-      $("btn-solicitar").disabled = false;
-    }
-  });
+    };
 
-  for (const b of $$("#tabs button")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
-  $("btn-volver-ventas").addEventListener("click", () => mostrarVista("ventas"));
+    buscar.addEventListener("input", () => {
+      clearTimeout(temporizador);
+      const q = buscar.value.trim();
+      if (negocioElegido && q !== negocioElegido.nombre) { negocioElegido = null; elegido.hidden = true; }
+      if (q.length < 3) { turnoBusqueda++; resultados.replaceChildren(); return; }
+      temporizador = setTimeout(() => buscarNegocio(q), 450);
+    });
+
+    const contacto = el("input", { maxlength: "120" });
+    const whatsapp = el("input", { inputmode: "tel", placeholder: "Ej. 33 1234 5678" });
+    const referencia = el("input", { maxlength: "100" });
+    const campoRef = campo("Referencia de la transferencia", referencia);
+    campoRef.hidden = true;
+    const metodo = el("select", { on: { change: () => { campoRef.hidden = metodo.value !== "transferencia"; } } }, [
+      el("option", { value: "efectivo", texto: "Efectivo" }),
+      el("option", { value: "transferencia", texto: "Transferencia" }),
+    ]);
+    const lista = el("div", { clase: "campo" }, libres.map((f) =>
+      el("label", { clase: "opcion" }, [el("input", { type: "checkbox", value: f.folio, name: "folio", checked: folioPre === f.folio }), f.folio])
+    ));
+    const enviar = el("button", { type: "button", clase: "btn p" }, ["Vender y activar"]);
+    enviar.addEventListener("click", async () => {
+      texto(msg, "", "ok");
+      const seleccion = [...lista.querySelectorAll("input:checked")].map((i) => i.value);
+      if (!negocioElegido) return texto(msg, "Elige el negocio de la lista.", "err");
+      if (!seleccion.length) return texto(msg, "Elige al menos un display.", "err");
+      if (metodo.value === "transferencia" && !referencia.value.trim()) return texto(msg, "La transferencia requiere referencia.", "err");
+      enviar.disabled = true;
+      try {
+        if (!ventaPendiente) {
+          const crear = await postJSON("/api/vendedor/ventas", {
+            negocio: negocioElegido.nombre,
+            contacto: contacto.value.trim(),
+            whatsapp: whatsapp.value.trim(),
+            metodo: metodo.value,
+            folios: seleccion,
+          });
+          if (crear.status === 401) return;
+          if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(msg, errorDe(crear.datos), "err");
+          ventaPendiente = crear.datos.id;
+        }
+        const cobro = await postJSON("/api/vendedor/ventas/" + enc(ventaPendiente) + "/cobro", {
+          referencia: referencia.value.trim(),
+          url_resena: negocioElegido.enlace_resena,
+        });
+        if (cobro.status === 401) return;
+        if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
+          ventasCache = [];
+          aviso = "Listo: " + cobro.datos.displays_activos + " display(s) activos para " + negocioElegido.nombre + ".";
+          ir("#/displays");
+        } else {
+          texto(msg, errorDe(cobro.datos) + " La venta quedó pendiente: intenta de nuevo o envíala a revisión desde Ventas.", "err");
+          enviar.textContent = "Reintentar activación";
+        }
+      } catch (_) {
+        texto(msg, MSG_ERROR_RED + " La venta quedó pendiente: intenta de nuevo.", "err");
+        enviar.textContent = "Reintentar activación";
+      } finally {
+        enviar.disabled = false;
+      }
+    });
+
+    nodos.push(
+      el("span", { clase: "lbl", texto: "1 · Negocio" }),
+      buscar,
+      el("p", { clase: "hint", texto: "Escribe el nombre y elige de la lista." }),
+      resultados,
+      elegido,
+      el("span", { clase: "lbl", texto: "2 · Datos de la venta" }),
+      campo("Persona de contacto (opcional)", contacto),
+      campo("WhatsApp del negocio (opcional)", whatsapp),
+      campo("Forma de pago", metodo),
+      campoRef,
+      el("span", { clase: "lbl", texto: "3 · Displays que activas" }),
+      lista,
+      enviar,
+      msg,
+    );
+    return nodos;
+  }
+
+  async function pVarios() {
+    return [
+      el("h2", { texto: "Varios" }),
+      el("div", { clase: "lista" }, [
+        el("div", { clase: "campo" }, [menuItem("Mis ventas", "#/ventas")]),
+        el("div", { clase: "campo" }, [menuItem("Mi cuenta", "#/cuenta")]),
+        el("div", { clase: "campo" }, [menuItem("Mi desempeño y bono", "#/p/" + enc("Mi desempeño y bono"))]),
+        el("div", { clase: "campo" }, [menuItem("Mis datos de cobro", "#/p/" + enc("Mis datos de cobro"))]),
+        el("div", { clase: "campo" }, [menuItem("Activación en lote", "#/p/" + enc("Activación en lote"))]),
+        el("a", { clase: "item", href: WA_AYUDA, target: "_blank", rel: "noopener" }, [el("b", { texto: "Hablar con soporte" }), el("span", { texto: "WhatsApp de Bien Visto" })]),
+      ]),
+    ];
+  }
+
+  async function pCuenta() {
+    return [
+      el("h2", { texto: "Mi cuenta" }),
+      el("div", { clase: "tarjeta" }, [el("b", { texto: nombreVend || "Vendedor" }), el("span", { texto: "Vendedor activo" })]),
+      el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/p/" + enc("Datos de cobro")) } }, ["Mis datos de cobro"]),
+      el("a", { clase: "btn s", href: WA_AYUDA, target: "_blank", rel: "noopener" }, ["Hablar con soporte"]),
+    ];
+  }
+
+  async function pProximamente([nombre]) {
+    return [
+      el("h2", { texto: nombre || "Próximamente" }),
+      el("div", { clase: "tarjeta" }, [el("b", { texto: "Esta función llega pronto." }), el("span", { texto: "Por ahora puedes ver tus displays, tu saldo y tus ventas." })]),
+    ];
+  }
+
+  function abrirCajon(abrir) { $("cajon").hidden = !abrir; }
+
+  window.addEventListener("hashchange", () => { abrirCajon(false); render(); });
+  $("btn-menu").addEventListener("click", () => abrirCajon(true));
+  $("btn-cerrar-cajon").addEventListener("click", () => abrirCajon(false));
+  $("cajon").addEventListener("click", (e) => { if (e.target.id === "cajon") abrirCajon(false); });
+  $("btn-atras").addEventListener("click", () => { if (history.length > 1) history.back(); else ir("#/hoy"); });
+  for (const b of $$(".tabs button")) b.addEventListener("click", () => ir("#/" + b.dataset.tab));
   $("btn-salir").addEventListener("click", cerrarSesion);
   iniciar();
 })();
