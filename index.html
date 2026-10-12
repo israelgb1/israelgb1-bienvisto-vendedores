@@ -3060,9 +3060,12 @@ var qrcode = function() {
       const msgPrueba = el("p", { clase: "msg", role: "status", style: "margin:4px 0 0" });
       const filas = enPrueba.map((x) => {
         const min = Number(x.prueba_min_restantes);
-        const fila = el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--menta);border-radius:12px;padding:8px 12px;margin:8px 0 0;font:500 14px/1.3 var(--fb)" });
+        const fila = el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--menta);border-radius:12px;padding:10px 12px;margin:8px 0 0;font:500 14px/1.3 var(--fb)" });
         const pintarNormal = () => fila.replaceChildren(
-          el("span", {}, [el("b", { texto: x.folio }), " · " + min + " min"]),
+          el("span", { style: "min-width:0" }, [
+            el("b", { texto: "Prueba activa · " + x.folio }),
+            el("span", { style: "display:block;font-size:13px;opacity:.8", texto: (x.negocio_asignado || "Negocio") + " · quedan " + min + " min" }),
+          ]),
           el("span", { style: "display:flex;gap:6px" }, [
             el("button", { type: "button", clase: "helpl quiet", style: "margin:0;width:auto;color:var(--tinta)", on: { click: pintarPregunta } }, ["Terminar"]),
             el("button", { type: "button", clase: "helpl quiet", style: "margin:0;width:auto;color:var(--tinta)", on: { click: () => ir("#/prueba/" + enc(x.folio)) } }, ["Ver"]),
