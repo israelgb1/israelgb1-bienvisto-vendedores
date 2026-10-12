@@ -4352,8 +4352,11 @@ var qrcode = function() {
     const pantallaCobro = () => {
       let metodo = "efectivo";
       let cuentaVigente;
-      const marca = el("input", { type: "checkbox", id: "marca-cobro" });
+      let marcado = false;
+      const chkBtn = el("button", { type: "button", clase: "chk", role: "checkbox", "aria-checked": "false" });
+      chkBtn.addEventListener("click", () => { marcado = !marcado; chkBtn.setAttribute("aria-checked", String(marcado)); chkBtn.classList.remove("bad"); });
       const etiquetaMarca = el("span", {});
+      chkBtn.append(el("i", {}, [icono(ICONO_CHECK_COBRO)]), etiquetaMarca);
       const aviso5 = el("p", { clase: "err", role: "alert", hidden: "" });
       const msgCobro = el("p", { clase: "msg", role: "status" });
       const rastreo = el("input", { id: "rastreo-cobro", autocapitalize: "characters", autocomplete: "off", maxlength: "100", placeholder: "Ej. 0123456789" });
@@ -4415,7 +4418,7 @@ var qrcode = function() {
 
       const pintarZona = async () => {
         if (metodo === "efectivo") {
-          zona.replaceChildren(el("div", { clase: "tarjeta" }, [el("b", { texto: "Efectivo" }), el("span", { texto: "Cuenta el dinero frente al cliente antes de activar." })]));
+          zona.replaceChildren(el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Cuenta los " + dinero(PRECIO_DISPLAY) + " frente al cliente antes de activar." }));
           return;
         }
         zona.replaceChildren(el("p", { clase: "hint", texto: "Cargando tus datos…" }));
@@ -4453,8 +4456,8 @@ var qrcode = function() {
         );
       };
 
-      const seg = el("div", { clase: "seg", role: "group", "aria-label": "Cómo paga el cliente" }, [["efectivo", "Efectivo"], ["transferencia", "Transferencia"]].map(([k, t]) => {
-        const b = el("button", { type: "button", on: { click: () => { if (st.ventaId || metodo === k) return; metodo = k; sincronizar(); } } }, [t]);
+      const seg = el("div", { clase: "meth", role: "group", "aria-label": "Cómo paga el cliente" }, [["efectivo", "Efectivo", ICONO_EFECTIVO], ["transferencia", "Transferencia", ICONO_TRANSFERENCIA]].map(([k, t, ic]) => {
+        const b = el("button", { type: "button", on: { click: () => { if (st.ventaId || metodo === k) return; metodo = k; sincronizar(); } } }, [icono(ic), t]);
         botonesMetodo[k] = b;
         return b;
       }));
@@ -4465,7 +4468,7 @@ var qrcode = function() {
       };
 
       const activar = el("button", { type: "button", clase: "btn a", style: "margin-top:12px", on: { click: async () => {
-        if (!marca.checked) { aviso5.hidden = false; aviso5.textContent = "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(ENTREGA_DISPLAY) + "."; return; }
+        if (!marcado) { chkBtn.classList.add("bad"); aviso5.hidden = false; aviso5.textContent = "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(ENTREGA_DISPLAY) + "."; return; }
         aviso5.hidden = true;
         activar.disabled = true;
         try {
@@ -4488,21 +4491,27 @@ var qrcode = function() {
       } } }, ["Activar display " + st.folio]);
 
       pintar(
-        encabezadoPaso(3),
+        el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Display " + st.folio })]),
         el("h2", { texto: "Cobra antes de activar" }),
         el("p", { clase: "sub", texto: "El precio es fijo y no se puede cambiar." }),
-        el("div", { clase: "tarjeta" }, [el("b", { texto: dinero(PRECIO_DISPLAY) }), el("span", { texto: "IVA incluido · 1 display" })]),
-        el("div", { clase: "dos" }, [
-          el("div", { clase: "card" }, [el("b", { texto: dinero(COMISION_DISPLAY) }), el("span", { texto: "Tu comisión" })]),
-          el("div", { clase: "card" }, [el("b", { texto: dinero(ENTREGA_DISPLAY) }), el("span", { texto: "Entregas a Bien Visto" })]),
+        el("div", { clase: "card" }, [
+          el("div", { clase: "price" }, [
+            el("b", { texto: dinero(PRECIO_DISPLAY) }),
+            el("span", { clase: "hint", style: "margin:0", texto: "IVA incluido" }),
+          ]),
+          el("div", { clase: "split", style: "margin-top:12px" }, [
+            el("div", { clase: "me" }, [el("b", { texto: dinero(COMISION_DISPLAY) }), el("span", { texto: "Tu comisión" })]),
+            el("div", {}, [el("b", { texto: dinero(ENTREGA_DISPLAY) }), el("span", { texto: "Entregas a Bien Visto" })]),
+          ]),
         ]),
         el("span", { clase: "lbl", texto: "¿Cómo paga el cliente?" }),
         seg,
         zona,
-        el("label", { clase: "opcion", for: "marca-cobro" }, [marca, etiquetaMarca]),
+        chkBtn,
         aviso5,
         msgCobro,
         activar,
+        ...preguntaDesplegable("¿Qué pasa si activo sin cobrar?", "Al activar te comprometes a entregar " + dinero(ENTREGA_DISPLAY) + " a Bien Visto, hayas cobrado o no. Si el cliente no pagó, ese dinero lo pones tú y no ganas la comisión de esa venta."),
         pieVersion(),
       );
       sincronizar();
