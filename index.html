@@ -454,7 +454,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     window.scrollTo(0, 0);
     try {
       const nodos = await fn(r.slice(1));
-      if (mi === turno && nodos) app.replaceChildren(...nodos);
+      if (mi === turno && nodos) app.replaceChildren(...nodos, ayudaDePantalla(pantalla));
     } catch (_) {
       if (mi === turno) app.replaceChildren(el("p", { clase: "msg err", texto: MSG_ERROR_RED }));
     }
@@ -469,6 +469,88 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     if (!location.hash || location.hash === "#") ir("#/hoy");
     render();
   }
+
+  // Ayuda contextual: textos por pantalla. Precios y cifras salen de las constantes.
+  const AYUDA = () => ({
+    hoy: ["Inicio", [
+      ["¿Cómo empiezo a vender?", "Toca «Vender un display» y acerca tu celular al display (NFC), o toca «Escanear el QR del display». Si el display está libre, sigues con la venta."],
+      ["¿Dónde está el folio?", "Son 4 caracteres impresos al pie del display, por ejemplo X4W3. Escríbelo en «¿Prefieres escribir el folio?» y se abre solo."],
+      ["Mi celular no tiene NFC", "Toca «Escanear el QR del display». La cámara solo se abre cuando tú lo tocas."],
+    ]],
+    vender: ["Vender un display", [
+      ["¿No aparece el negocio?", "Escribe la colonia o la calle junto con el nombre, por ejemplo «Tacos La Esquina Patria». Si no sale, el negocio puede no tener ficha en Google Maps."],
+      ["Salen dos negocios con el mismo nombre", "Confirma la dirección con el cliente. Cada sucursal tiene su propia ficha y sus propias reseñas."],
+      ["¿Qué WhatsApp pongo?", "El de la persona que recibe el display y el reporte, normalmente el dueño o el encargado."],
+      ["¿Qué pasa si activo sin cobrar?", `Al activar te comprometes a entregar ${dinero(ENTREGA_DISPLAY)} a Bien Visto por cada display, hayas cobrado o no. Si el cliente no pagó, ese dinero lo pones tú.`],
+      ["¿Puedo cambiar el precio?", `No. Es fijo: ${dinero(PRECIO_DISPLAY)} con IVA incluido. Si activas ${PROMO_N} displays para un mismo negocio, usa «Activar varios» y pagan ${dinero(PROMO_PRECIO)} en total.`],
+      ["¿Cómo pide la factura el cliente?", "Él mismo la pide en bienvisto.com.mx/factura con la referencia de la venta."],
+    ]],
+    prueba: ["Prueba del display", [
+      ["¿No se abrió la reseña?", "Para escribir una reseña hay que tener sesión de Google en el celular. Prueba con otro teléfono."],
+      ["¿Por qué con otro celular?", "Así ves lo que verá un cliente del negocio, no la pantalla de administrador."],
+      ["¿Qué pasa si el cliente no compra?", "Termina la prueba. El display queda libre y no se guarda ningún dato del cliente."],
+    ]],
+    escanear: ["Escanear el QR", [
+      ["La cámara no se abre", "Revisa el permiso de cámara del navegador. Si tu navegador no puede leer QR, escribe el folio desde Inicio."],
+      ["¿Dónde está el QR?", "En el display, al pie o en la etiqueta. Apunta la cámara al código completo."],
+    ]],
+    lote: ["Activar varios", [
+      ["¿Cuándo uso Activar varios?", "Cuando entregas 2 o más displays al mismo negocio. Eliges el negocio y el cliente una vez, y agregas los displays."],
+      ["¿Cómo funciona la promoción?", `${PROMO_N} displays en la misma venta cuestan ${dinero(PROMO_PRECIO)} en total. Los que no completan un grupo de ${PROMO_N} se cobran a ${dinero(PRECIO_DISPLAY)}.`],
+      ["Me equivoqué de display", "Toca «Quitar» junto al folio antes de activar."],
+    ]],
+    displays: ["Mis displays", [
+      ["¿Qué significa cada estado?", "Activo: lleva a reseñas. Libre: en inventario, sin negocio. En prueba: un cliente lo está probando. Retirado: ya no lleva a reseñas."],
+      ["¿Cómo busco?", "Por folio, nombre del negocio o dirección."],
+    ]],
+    d: ["Detalle del display", [
+      ["¿Cómo cambio de negocio o pido una reposición?", "Envía una solicitud con el motivo. Bien Visto la revisa y te avisa. Mientras tanto el display sigue funcionando."],
+      ["¿Puedo retirar un display?", "No desde tu panel. Si el cliente ya no lo quiere, escribe a Bien Visto."],
+      ["¿Se pierden los escaneos?", "No. El historial del display queda guardado."],
+    ]],
+    saldo: ["Mi saldo", [
+      ["¿Cómo se calcula mi saldo?", `Suma lo que cobraste tú y aún no entregaste, con ${dinero(ENTREGA_DISPLAY)} por display. Tu comisión de ${dinero(COMISION_DISPLAY)} ya la retuviste al cobrar.`],
+      ["¿Qué es el tope?", "Es el máximo de dinero de Bien Visto que puedes tener contigo. Si lo alcanzas, el panel no te deja activar más displays hasta que entregues."],
+      ["¿Qué es un adeudo?", "Si pasas el plazo de entrega y no avisas, Bien Visto puede retirar esos displays por impago. Mientras haya adeudo no puedes activar más."],
+    ]],
+    bloqueo: ["Entrega para seguir", [
+      ["¿Por qué no me deja activar?", "Tienes dinero de Bien Visto contigo por encima del tope, tu plazo de entrega venció o tienes un adeudo."],
+      ["¿Cuándo se desbloquea?", "En cuanto Bien Visto confirma tu entrega y tu saldo baja del tope. Usa «Ver mi saldo y entregar»."],
+    ]],
+    ventas: ["Mis ventas", [
+      ["¿Por qué no veo los datos de mis clientes?", "Por privacidad. Capturas el contacto una sola vez, al vender."],
+      ["¿Cuándo recibo mi comisión?", `La retienes al cobrar: del dinero del cliente te quedas ${dinero(COMISION_DISPLAY)} por display y entregas el resto a Bien Visto.`],
+    ]],
+    cuenta: ["Mi cuenta", [
+      ["¿Cómo cambio mi correo o WhatsApp?", "Pídelo a Bien Visto. Desde el panel no se cambian."],
+      ["¿Cómo cierro sesión?", "Toca «Cerrar sesión» y confirma. Para volver a activar displays tendrás que entrar de nuevo con tu correo."],
+    ]],
+    desempeno: ["Tu mes", [
+      ["¿Qué cuenta como display entregado?", "Cuenta cuando Bien Visto confirma tu entrega del dinero, no cuando lo vendes. El mes va del 1 al último día."],
+      ["¿Cómo gano mi comisión?", `La retienes al cobrar: del dinero del cliente te quedas ${dinero(COMISION_DISPLAY)} por display y entregas el resto a Bien Visto.`],
+    ]],
+  });
+  const CLAVE_AYUDA = { d: "d", solicitar: "d", v: "ventas", varios: "hoy", p: "hoy" };
+
+  let verAyuda = false;
+  const ayudaDePantalla = (pantalla) => {
+    if (!verAyuda) {
+      return el("button", { type: "button", clase: "helpl quiet", on: { click: () => { verAyuda = true; render(); } } }, ["¿Cómo funciona esta pantalla?"]);
+    }
+    const textos = AYUDA();
+    const [titulo, preguntas] = textos[CLAVE_AYUDA[pantalla] || pantalla] || textos.hoy;
+    return el("section", { clase: "tarjeta", "aria-label": "Ayuda de esta pantalla" }, [
+      el("div", { clase: "fila", style: "justify-content:space-between" }, [
+        el("b", { texto: "Ayuda · " + titulo }),
+        el("button", { type: "button", clase: "btn s sm", on: { click: () => { verAyuda = false; render(); } } }, ["Cerrar"]),
+      ]),
+      ...preguntas.map(([q, a]) => el("details", { style: "margin-top:6px" }, [
+        el("summary", { style: "font-weight:600;padding:8px 0;cursor:pointer", texto: q }),
+        el("p", { clase: "hint", texto: a }),
+      ])),
+      el("a", { clase: "btn s sm", style: "margin-top:10px", href: WA_AYUDA, target: "_blank", rel: "noopener" }, ["Escribir a soporte por WhatsApp"]),
+    ]);
+  };
 
   // Ruta según el estado del display: libre → vender; en prueba → pantalla de prueba; si no → detalle.
   const rutaParaDisplay = (x) => {
@@ -1723,6 +1805,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
       item("list", "Mis ventas y comisión", ok.length + (ok.length === 1 ? " venta" : " ventas"), "", "#/ventas"),
       el("div", { clase: "msep" }),
       item("book", "Manual de uso", "bienvisto.com.mx/ayuda/manual", "", "https://bienvisto.com.mx/ayuda/manual"),
+      el("button", { type: "button", clase: "mi", on: { click: () => { verAyuda = true; abrirCajon(false); render(); } } }, [svgDe("book"), el("span", { texto: "Ayuda de esta pantalla" })]),
       item("chat", "Escribir a soporte", "Por WhatsApp", "", WA_AYUDA),
       el("div", { clase: "msep" }),
       el("button", { type: "button", clase: "mi", id: "btn-salir", on: { click: confirmarSalida } }, [svgDe("out"), el("span", { clase: "mi-cuerpo" }, [el("span", { texto: "Cerrar sesión" })])]),
@@ -1743,7 +1826,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     if (abrir) pintarCajon();
   }
 
-  window.addEventListener("hashchange", () => { abrirCajon(false); render(); });
+  window.addEventListener("hashchange", () => { verAyuda = false; abrirCajon(false); render(); });
   $("btn-menu").addEventListener("click", () => abrirCajon(true));
   $("cajon").addEventListener("click", (e) => { if (e.target.id === "cajon") abrirCajon(false); });
   $("btn-atras").addEventListener("click", () => { if (history.length > 1) history.back(); else ir("#/hoy"); });
