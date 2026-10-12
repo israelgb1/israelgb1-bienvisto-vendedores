@@ -161,6 +161,14 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 .bk svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .bk:hover{background:var(--verde);color:#fff}
 h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
+.steps{display:flex;gap:6px;margin:2px 0 14px}.steps i{height:6px;flex:1;border-radius:3px;background:var(--borde)}.steps i.on{background:var(--verde)}
+.clb{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:10px 14px;margin:0 0 14px;border:2px solid var(--verde);border-radius:16px;background:#fff;color:var(--tinta);text-align:left}
+.clb:hover{background:var(--menta)}
+.clb .ic{flex:none;width:42px;height:42px;border-radius:50%;background:var(--menta);display:grid;place-items:center}
+.clb .ic svg{width:24px;height:24px;fill:none;stroke:var(--verde);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.clb b{display:block;font:600 17px/1.2 var(--fd);color:var(--tinta)}
+.clb .s{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.clb .ch{flex:none;margin-left:auto;width:20px;height:20px;fill:none;stroke:var(--verde);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .resultados{max-height:260px;overflow-y:auto;margin:4px 0 12px;padding:2px 2px 0 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 
 .drawer-in{background:var(--crema);width:88%;max-width:340px;height:100%;padding:16px 14px 20px;overflow-y:auto}
@@ -370,7 +378,12 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
   // ===== Panel del vendedor =====
   const $$ = (sel) => document.querySelectorAll(sel);
   const app = $("app");
-  const dinero = (n) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n) || 0);
+  // Pesos enteros sin centavos, como en el mockup ($350, $2,000). Con centavos, dos decimales.
+  const dinero = (n) => {
+    const v = Number(n) || 0;
+    const enteros = Number.isInteger(v);
+    return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: enteros ? 0 : 2, maximumFractionDigits: enteros ? 0 : 2 }).format(v);
+  };
   const enc = (s) => encodeURIComponent(s);
   const WA_AYUDA = "https://wa.me/522201435851?text=" + encodeURIComponent("Hola, soy vendedor de Bien Visto y necesito ayuda con mi panel.");
   const ESTADOS = {
@@ -1242,6 +1255,19 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
 
     const pintar = (...nodos) => { parar(); contenedor.replaceChildren(...nodos, avisoGlobal); };
 
+    // Encabezado de los pasos de venta (folio, estado, enlace y progreso), como en el mockup.
+    const encabezadoPaso = (paso) => {
+      const d = displays.find((y) => y.folio === st.folio);
+      return el("div", { clase: "encab-paso" }, [
+        el("div", { clase: "fila", style: "justify-content:flex-start;gap:10px;margin-bottom:6px" }, [
+          el("span", { clase: "folio", texto: st.folio }),
+          chip(d ? d.estado : "libre"),
+        ]),
+        el("p", { clase: "hint", texto: "ir.bienvisto.com.mx/" + st.folio.toLowerCase(), style: "margin:0 0 10px" }),
+        el("div", { clase: "steps" }, [1, 2, 3].map((i) => el("i", { clase: i <= paso ? "on" : "" }))),
+      ]);
+    };
+
     const folioValido = (f) => {
       const x = displays.find((y) => y.folio === f);
       if (!x) return "No encontramos ese folio en tu inventario.";
@@ -1334,16 +1360,19 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         temporizador = setTimeout(() => buscarNegocio(q), 450);
       });
       const nodos = [
+        encabezadoPaso(1),
         el("h2", { texto: "¿Cuál es su negocio?" }),
         el("p", { clase: "sub", texto: "Escribe el nombre como aparece en Google Maps. Primero demuestras que funciona; los datos del cliente vienen después." }),
-      ];
-      if (st.clientes.length) nodos.push(el("button", { type: "button", clase: "btn s sm", on: { click: () => pantallaCliente() } }, ["¿Ya es cliente? Búscalo"]));
-      nodos.push(
+        el("button", { type: "button", clase: "clb", on: { click: () => pantallaCliente() } }, [
+          el("span", { clase: "ic", "aria-hidden": "true" }, [icono('<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 5.2a3.4 3.4 0 0 1 0 6.4M18 14.4c2 .7 3.5 2.6 3.5 5.6"/></svg>')]),
+          el("span", {}, [el("b", { texto: "¿Ya es cliente?" }), el("span", { clase: "s", texto: "Búscalo por su nombre y elige su negocio" })]),
+          icono('<svg class="ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>'),
+        ]),
         el("label", { clase: "lbl", texto: "Buscar en Google Maps", for: "bus-n" }),
         (buscar.id = "bus-n", buscar),
         el("button", { type: "button", clase: "btn s sm", style: "margin:12px 0 12px", on: { click: ubicar } }, ["Usar mi ubicación: negocios cerca de mí"]),
         resultados,
-      );
+      ];
       pintar(...nodos);
       buscar.focus();
     };
@@ -1375,6 +1404,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const pantallaConfirmar = () => {
       const p = st.negocio;
       pintar(
+        encabezadoPaso(1),
         el("h2", { texto: "¿Es este?" }),
         el("p", { clase: "sub", texto: "Confirma con el cliente: nombre y dirección." }),
         el("div", { clase: "tarjeta" }, [el("b", { texto: p.nombre }), el("span", { texto: p.direccion })]),
@@ -1418,6 +1448,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         return el("div", { clase: "campo" }, [el("label", { clase: "lbl", texto: etiqueta, for: "dato-" + k }), (campos[k].id = "dato-" + k, campos[k]), avisos[k]]);
       };
       pintar(
+        encabezadoPaso(2),
         el("h2", { texto: "Datos del cliente" }),
         el("p", { clase: "sub", texto: "Ya vio que funciona. Anota a quién le llegará su recibo." }),
         campo("nombre", "Nombre", { placeholder: "Nombre de quien lo recibe" }),
@@ -1465,6 +1496,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         }
       } } }, ["Activar display " + st.folio]);
       pintar(
+        encabezadoPaso(3),
         el("h2", { texto: "Cobra antes de activar" }),
         el("p", { clase: "sub", texto: "El precio es fijo y no se puede cambiar." }),
         el("div", { clase: "tarjeta" }, [el("b", { texto: dinero(PRECIO_DISPLAY) }), el("span", { texto: "IVA incluido · 1 display" })]),
