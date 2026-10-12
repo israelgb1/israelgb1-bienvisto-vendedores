@@ -2399,7 +2399,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const filas = LOTE.folios.map((f) => el("div", { clase: "row", style: "display:flex;align-items:center;gap:10px;padding:6px 0" }, [
       el("span", { clase: "folio sm", texto: f }),
       el("span", { clase: "hint", style: "flex:1;min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", texto: "ir.bienvisto.com.mx/" + f.toLowerCase() }),
-      bloqueado ? el("span") : el("button", { type: "button", clase: "chip r", style: "font:600 13.5px/1 var(--fb);gap:6px;letter-spacing:.06em;width:auto;flex:none", "aria-label": "Quitar " + f, on: { click: () => { LOTE.folios = LOTE.folios.filter((x) => x !== f); render(); } } }, ["Quitar"]),
+      bloqueado ? el("span") : el("button", { type: "button", clase: "chip r", style: "font:600 13.5px/1 var(--fb);gap:6px;letter-spacing:.06em;width:auto;flex:none;margin:0", "aria-label": "Quitar " + f, on: { click: () => { LOTE.folios = LOTE.folios.filter((x) => x !== f); render(); } } }, ["Quitar"]),
     ]));
 
     const siguiente = el("button", { type: "button", clase: "btn a", on: { click: () => ir("#/lote/cobro") } }, [n ? "Siguiente: cobrar " + dinero(totalLote(n).total) : "Elige al menos un display"]);
