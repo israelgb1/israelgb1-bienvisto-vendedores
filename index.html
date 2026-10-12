@@ -901,7 +901,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
       ]),
     ];
     if (["cobrada", "entregada"].includes(v.estado)) {
-      const enlaceFactura = "https://bienvisto.com.mx/factura";
+      const enlaceFactura = ENLACE_FACTURA;
       const msgFac = el("p", { clase: "msg", role: "status" });
       const copiar = el("button", { type: "button", clase: "btn s" }, ["Copiar enlace"]);
       copiar.addEventListener("click", async () => {
@@ -1057,6 +1057,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
   const MAX_LOTE = 50;
   const COMISION_DISPLAY = 150;
   const ENTREGA_DISPLAY = PRECIO_DISPLAY - COMISION_DISPLAY;
+  const ENLACE_FACTURA = "https://bienvisto.com.mx/factura";
   const DOMINIOS_TYPO = { "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gamil.com": "gmail.com", "gmail.co": "gmail.com", "gmail.con": "gmail.com", "hotmial.com": "hotmail.com", "hotmail.con": "hotmail.com", "outlok.com": "outlook.com", "outlook.con": "outlook.com", "yaho.com": "yahoo.com", "yahoo.con": "yahoo.com" };
   const sinAcentos = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
@@ -1432,12 +1433,51 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 
     // 6 · Listo
     const pantallaListo = () => {
+      const factura = el("div", {});
+      const pregunta = el("div", {});
+
+      const mostrarFactura = () => {
+        const msgFac = el("p", { clase: "msg", role: "status" });
+        const copiar = el("button", { type: "button", clase: "btn s", on: { click: async () => {
+          try {
+            await navigator.clipboard.writeText(ENLACE_FACTURA);
+            texto(msgFac, "Enlace copiado.", "ok");
+          } catch (_) {
+            texto(msgFac, "No pudimos copiarlo. Selecciónalo y cópialo a mano.", "err");
+          }
+        } } }, ["Copiar enlace"]);
+        pregunta.replaceChildren();
+        factura.replaceChildren(
+          el("div", { clase: "card" }, [
+            el("span", { clase: "lbl", texto: "Factura" }),
+            el("p", { clase: "hint", texto: "Compártele este enlace. En el formulario debe escribir la referencia de abajo." }),
+            el("b", { texto: ENLACE_FACTURA }),
+            el("b", { texto: "Referencia: " + st.ventaId }),
+            copiar,
+            msgFac,
+          ]),
+        );
+      };
+
+      const sinFactura = (mensaje) => {
+        pregunta.replaceChildren(el("p", { clase: "hint", texto: mensaje }));
+      };
+
+      pregunta.replaceChildren(
+        el("span", { clase: "lbl", texto: "¿Tu cliente necesita factura?" }),
+        el("p", { clase: "hint", texto: "Pregúntaselo ahora, antes de irte. Después es mucho más difícil localizarlo." }),
+        el("button", { type: "button", clase: "btn p", on: { click: mostrarFactura } }, ["Sí, necesita factura"]),
+        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => sinFactura("Anotado: sin factura por ahora.") } }, ["No necesita factura"]),
+        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => sinFactura("Podrás pedir la factura después desde Ventas.") } }, ["Preguntar después"]),
+      );
+
       pintar(
         el("h2", { texto: st.folio + " ya está activo" }),
         el("p", { clase: "sub", texto: "Desde ahora, cada escaneo lleva a dejar una reseña de " + st.negocio.nombre + "." }),
         el("div", { clase: "tarjeta" }, [el("b", { texto: "Debes entregar " + dinero(ENTREGA_DISPLAY) }), el("span", { texto: "Entrégalo a Bien Visto desde Mi saldo." })]),
         el("div", { clase: "tarjeta" }, [el("b", { texto: "Pruébalo tú mismo" }), el("span", { texto: "Abre el enlace de reseña para ver lo que verá tu cliente." }), el("button", { type: "button", clase: "btn s sm", style: "margin-top:10px", on: { click: () => window.open(st.negocio.enlace_resena, "_blank", "noopener") } }, ["Abrir enlace de reseña"])]),
-        el("button", { type: "button", clase: "btn s", on: { click: () => { st.folio = null; st.ventaId = null; st.form = { nombre: "", wa: "", mail: "" }; pantallaFolio(); } } }, ["Activar otro display de este cliente"]),
+        el("div", { clase: "tarjeta" }, [pregunta, factura]),
+        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { st.folio = null; st.ventaId = null; st.form = { nombre: "", wa: "", mail: "" }; pantallaFolio(); } } }, ["Activar otro display de este cliente"]),
         el("button", { type: "button", clase: "btn p", style: "margin-top:8px", on: { click: () => ir("#/hoy") } }, ["Terminar"]),
       );
     };
