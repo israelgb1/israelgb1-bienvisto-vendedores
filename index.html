@@ -170,6 +170,11 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 .promo .pb b{display:block;font:700 26px/1 var(--fd)}
 .promo p{margin:0;font-size:15px;line-height:1.3}
 .promo p b{font-weight:700}
+.tap{display:flex;align-items:center;gap:14px;background:#fff;border:2px dashed var(--borde-s);border-radius:16px;padding:14px;margin-bottom:12px;text-align:left;width:100%}
+.tap svg{width:44px;height:44px;flex:none}
+.tap b{display:block;font:500 18px/1.2 var(--fd)}
+.tap span{font-size:15px;color:var(--muted)}
+.tap.alt{border-style:solid;border-color:var(--borde)}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .split div{background:var(--menta);border-radius:12px;padding:10px 12px}
 .split b{display:block;font:600 22px/1.1 var(--fd)}
@@ -2161,12 +2166,48 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     return "";
   }
 
+  // Tarjeta de promoción como en el mockup: 0 displays, faltan para la promo, o promo aplicada.
   function lotePromoNota(n) {
-    if (!n) return null;
+    if (!n) return el("div", { clase: "promo" }, [
+      el("span", { clase: "pb" }, [el("b", { texto: String(PROMO_N) }), "por " + dinero(PROMO_PRECIO)]),
+      el("p", {}, [el("b", { texto: "Promoción: " + PROMO_N + " displays por " + dinero(PROMO_PRECIO) }), " en la misma venta, en lugar de " + dinero(PROMO_N * PRECIO_DISPLAY) + ". Tu comisión sigue siendo " + dinero(COMISION_DISPLAY) + " por display."]),
+    ]);
     const k = n % PROMO_N;
-    if (k === 0) return el("div", { clase: "aviso", role: "status", texto: "Promoción aplicada: " + n + " displays por " + dinero(totalLote(n).total) + ". Tu comisión no cambia: " + dinero(n * COMISION_DISPLAY) + "." });
+    if (k === 0) return el("div", { clase: "promo", role: "status" }, [
+      el("span", { clase: "pb" }, [el("b", { texto: "✓" }), "aplicada"]),
+      el("p", {}, [el("b", { texto: "Promoción aplicada: " + n + " displays por " + dinero(totalLote(n).total) + "." }), " Tu comisión no cambia: " + dinero(n * COMISION_DISPLAY) + "."]),
+    ]);
     const f = PROMO_N - k;
-    return el("div", { clase: "aviso", role: "status", texto: "Agrega " + f + (f === 1 ? " display" : " displays") + " más y aplica la promoción. Los " + PROMO_N + " salen en " + dinero(PROMO_PRECIO) + " en vez de " + dinero(PROMO_N * PRECIO_DISPLAY) + "." });
+    return el("div", { clase: "promo", role: "status" }, [
+      el("span", { clase: "pb" }, [el("b", { texto: String(f) }), "más"]),
+      el("p", {}, [el("b", { texto: "Agrega " + f + (f === 1 ? " display" : " displays") + " más y aplica la promoción." }), " Los " + PROMO_N + " salen en " + dinero(PROMO_PRECIO) + " en vez de " + dinero(PROMO_N * PRECIO_DISPLAY) + ". Tu comisión sigue igual."]),
+    ]);
+  }
+
+  // Lector NFC (Web NFC, Chrome en Android). Cada display que se acerca se suma a la lista.
+  let nfcCtrl = null;
+  const pararNfc = () => { if (nfcCtrl) { nfcCtrl.abort(); nfcCtrl = null; } };
+  window.addEventListener("hashchange", pararNfc);
+  async function leerNfc(onFolio, onError) {
+    if (!("NDEFReader" in window)) { onError("Tu navegador no lee NFC. En Android usa Chrome; si no, escanea el QR o teclea el folio."); return; }
+    pararNfc();
+    nfcCtrl = new AbortController();
+    try {
+      const lector = new NDEFReader();
+      lector.onreading = (ev) => {
+        for (const reg of ev.message.records) {
+          const txt = new TextDecoder().decode(reg.data || new ArrayBuffer(0));
+          const m = txt.match(/ir\.bienvisto\.com\.mx\/([A-Za-z0-9]{4})/i) || txt.trim().match(/^([A-Za-z0-9]{4})$/);
+          if (m) return onFolio(m[1].toUpperCase());
+        }
+        onError("Ese celular o display no es de Bien Visto. Acércalo otra vez.");
+      };
+      lector.onreadingerror = () => onError("No se leyó bien el display. Acércalo otra vez.");
+      await lector.scan({ signal: nfcCtrl.signal });
+    } catch (e) {
+      nfcCtrl = null;
+      onError(e && e.name === "NotAllowedError" ? "Permite el uso de NFC en el navegador para leer displays." : "No pudimos activar el NFC de este celular. Usa el QR o teclea el folio.");
+    }
   }
 
   // Paso 1 · Quién recibe (nombre, WhatsApp, correo). Paso 2 · El negocio, con búsqueda.
@@ -2349,7 +2390,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     };
     const folioIn = el("input", { id: "lf", placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", autocapitalize: "characters", "aria-label": "Folio del display" });
 
-    const filas = LOTE.folios.map((f) => el("div", { clase: "row", style: "padding:6px 0" }, [
+    const filas = LOTE.folios.map((f) => el("div", { clase: "row", style: "display:flex;align-items:center;gap:10px;padding:6px 0" }, [
       el("span", { clase: "folio sm", texto: f }),
       el("span", { clase: "grow hint", style: "margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", texto: "ir.bienvisto.com.mx/" + f.toLowerCase() }),
       bloqueado ? el("span") : el("button", { type: "button", clase: "chip r", "aria-label": "Quitar " + f, on: { click: () => { LOTE.folios = LOTE.folios.filter((x) => x !== f); render(); } } }, ["Quitar"]),
@@ -2358,13 +2399,31 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const siguiente = el("button", { type: "button", clase: "btn a", on: { click: () => ir("#/lote/cobro") } }, [n ? "Siguiente: cobrar " + dinero(totalLote(n).total) : "Elige al menos un display"]);
     siguiente.disabled = !n;
 
+    const agregarPorNfc = (f) => {
+      if (!nfcCtrl) return;
+      const e = validarLote(f, LOTE.folios);
+      if (e) LOTE.msgNfc = e;
+      else { LOTE.folios.push(f); LOTE.msgNfc = ""; }
+      render();
+    };
     const controles = bloqueado
       ? [el("p", { clase: "hint", texto: "La venta ya se creó. Termina el cobro para activarla." })]
       : [
-        el("button", { type: "button", clase: "btn s qr", on: { click: () => abrirEscanerLote({
+        el("button", { type: "button", clase: "tap", "aria-pressed": nfcCtrl ? "true" : "false", on: { click: () => {
+          if (nfcCtrl) return pararNfc(), render();
+          LOTE.msgNfc = "";
+          leerNfc(agregarPorNfc, (m) => { LOTE.msgNfc = m; pararNfc(); render(); }).then(() => render());
+        } } }, [icono(ICONO_NFC), el("span", {}, [
+          el("b", { texto: "Acerca tu celular a cada uno de los displays que vas a configurar" }),
+          el("span", { texto: nfcCtrl ? "Lector activo: toca para detener" : "Se agrega aquí; no abre otro formulario" }),
+        ])]),
+        el("button", { type: "button", clase: "tap alt", on: { click: () => abrirEscanerLote({
           validar: (f, enOverlay) => validarLote(f, LOTE.folios.concat(enOverlay)),
           listo: (fs) => { LOTE.folios.push(...fs); render(); },
-        }) } }, [icono(ICONO_QR), "Escanear QR de varios"]),
+        }) } }, [icono(ICONO_QR), el("span", {}, [
+          el("b", { texto: "Escanear QR de varios" }),
+          el("span", { texto: "La cámara sigue abierta entre display y display" }),
+        ])]),
         el("form", { novalidate: "", on: { submit: (e) => { e.preventDefault(); agregarFolio(folioIn.value.trim()); } } }, [
           el("label", { clase: "lbl", for: "lf", texto: "O teclea el folio" }),
           el("div", { clase: "fila" }, [folioIn, el("button", { type: "submit", clase: "btn s sm" }, ["Agregar"])]),
@@ -2375,19 +2434,20 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
           libres.length > 6 ? el("span", { clase: "hint", style: "align-self:center", texto: "+" + (libres.length - 6) + " más: teclea el folio" }) : el("span"),
         ]) : el("span"),
       ];
+    if (!bloqueado && LOTE.msgNfc) msg.replaceChildren(LOTE.msgNfc), msg.classList.add("err");
 
     return [
       el("h2", { texto: LOTE.negocio.nombre }),
-      LOTE.negocio.direccion ? el("p", { clase: "hint", style: "margin:0 0 6px", texto: LOTE.negocio.direccion }) : el("span"),
-      el("p", { clase: "sub", texto: "Escanea o teclea cada display y confirma una sola vez." }),
-      lotePromoNota(n) || el("span"),
+      el("p", { clase: "hint", style: "margin:0 0 6px", texto: [LOTE.nombre, LOTE.negocio.direccion].filter(Boolean).join(" · ") }),
+      el("p", { clase: "sub", texto: "Toca los displays con el celular (o elígelos aquí) y confirma una sola vez." }),
+      lotePromoNota(n),
       el("div", { clase: "card" }, [
-        el("span", { clase: "lbl", texto: "Se activarán " + n + " de " + MAX_LOTE }),
+        el("span", { clase: "lbl", texto: "Se activarán " + n }),
         n ? el("div", {}, filas) : el("p", { clase: "hint", texto: "Aún no hay displays. Toca el primero." }),
       ]),
       ...controles,
       siguiente,
-      el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => { LOTE = null; ir("#/varios"); } } }, ["Cambiar negocio"]),
+      el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => { pararNfc(); LOTE = null; ir("#/varios"); } } }, ["Cambiar negocio"]),
       msg,
     ];
   }
