@@ -433,7 +433,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
   }
 
   const PANTALLAS = {
-    hoy: pHoy, vender: pVender, prueba: pPrueba, escanear: pEscanear, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
+    hoy: pHoy, vender: pVender, prueba: pPrueba, escanear: pEscanear, lote: pLote, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
     ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, p: pProximamente,
   };
   const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", escanear: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
@@ -970,6 +970,9 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
   // ===== Venta por pasos (según el mockup): folio → negocio → confirmar → datos → cobro → listo =====
   const FOLIO_APP = /^[ABCDEFGHJKLMNPQRSTUVWXYZ][2-9][ABCDEFGHJKLMNPQRSTUVWXYZ][2-9]$/;
   const PRECIO_DISPLAY = 350;
+  const PROMO_N = 3;
+  const PROMO_PRECIO = 900;
+  const MAX_LOTE = 50;
   const COMISION_DISPLAY = 150;
   const ENTREGA_DISPLAY = PRECIO_DISPLAY - COMISION_DISPLAY;
   const DOMINIOS_TYPO = { "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gamil.com": "gmail.com", "gmail.co": "gmail.com", "gmail.con": "gmail.com", "hotmial.com": "hotmail.com", "hotmail.con": "hotmail.com", "outlok.com": "outlook.com", "outlook.con": "outlook.com", "yaho.com": "yahoo.com", "yahoo.con": "yahoo.com" };
@@ -1335,13 +1338,211 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     return [contenedor];
   }
 
+  // Activar varios: un negocio, un cliente y varios displays en una sola venta (promoción 3 por $900).
+  function totalLote(n) {
+    const pares = Math.floor(n / PROMO_N);
+    const total = pares * PROMO_PRECIO + (n % PROMO_N) * PRECIO_DISPLAY;
+    return { total, aEntregar: total - n * COMISION_DISPLAY, enPromo: pares * PROMO_N };
+  }
+
+  async function pLote() {
+    const d = await getJSON("/api/vendedor/displays");
+    if (!d) return null;
+    const libres = new Set((d.displays || []).filter((x) => x.estado === "libre").map((x) => x.folio));
+    const L = { negocio: null, nombre: "", wa: "", folios: [], ventaId: null, hecho: null };
+    const msg = el("p", { clase: "msg", role: "status" });
+    const raiz = el("div", {});
+    const cajaNegocio = el("div", {});
+    const cajaCliente = el("div", {});
+    const cajaDisplays = el("div", {});
+    const visor = el("div", {});
+    const cajaResumen = el("div", {});
+    const cajaCobro = el("div", {});
+    let pararCamara = () => {};
+
+    const renderResumen = () => {
+      const n = L.folios.length;
+      if (!n) return cajaResumen.replaceChildren();
+      const t = totalLote(n);
+      cajaResumen.replaceChildren(el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Total a cobrar" }),
+        el("b", { texto: dinero(t.total) }),
+        el("p", { clase: "hint", texto: n + (n === 1 ? " display" : " displays") + (t.enPromo ? " · " + t.enPromo + " en promoción" : "") + " · a entregar " + dinero(t.aEntregar) }),
+      ]));
+    };
+
+    const renderCobro = () => {
+      const n = L.folios.length;
+      if (!n) return cajaCobro.replaceChildren();
+      const t = totalLote(n);
+      const marca = el("input", { type: "checkbox", id: "marca-lote" });
+      const boton = el("button", { type: "button", clase: "btn a", style: "margin-top:12px" }, [L.ventaId ? "Reintentar activación" : "Cobrar y activar " + n + (n === 1 ? " display" : " displays")]);
+      const activar = async () => {
+        texto(msg, "", "ok");
+        if (!L.negocio) return texto(msg, "Elige el negocio.", "err");
+        const eNombre = errNombreCliente(L.nombre);
+        if (eNombre) return texto(msg, eNombre, "err");
+        const eWa = errWhatsappCliente(L.wa);
+        if (eWa) return texto(msg, eWa, "err");
+        if (!marca.checked) return texto(msg, "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(t.aEntregar) + ".", "err");
+        boton.disabled = true;
+        try {
+          if (!L.ventaId) {
+            const crear = await postJSON("/api/vendedor/ventas", { negocio: L.negocio.nombre, contacto: L.nombre.trim(), whatsapp: L.wa.trim(), metodo: "efectivo", direccion: L.negocio.direccion, folios: L.folios });
+            if (crear.status === 401) return;
+            if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(msg, errorDe(crear.datos), "err");
+            L.ventaId = crear.datos.id;
+            renderDisplays();
+          }
+          const cobro = await postJSON("/api/vendedor/ventas/" + enc(L.ventaId) + "/cobro", { referencia: "", url_resena: L.negocio.enlace_resena });
+          if (cobro.status === 401) return;
+          if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
+            ventasCache = [];
+            L.hecho = L.folios.slice();
+            L.hecho.forEach((f) => libres.delete(f));
+            return pantallaLoteListo();
+          }
+          texto(msg, errorDe(cobro.datos) + " La venta quedó pendiente: intenta de nuevo o envíala a revisión desde Ventas.", "err");
+          renderCobro();
+        } catch (_) {
+          texto(msg, MSG_ERROR_RED + " La venta quedó pendiente: intenta de nuevo.", "err");
+          renderCobro();
+        } finally {
+          boton.disabled = false;
+        }
+      };
+      boton.addEventListener("click", activar);
+      cajaCobro.replaceChildren(
+        el("label", { clase: "opcion", for: "marca-lote" }, [marca, el("span", { texto: "Confirmo que cobré " + dinero(t.total) + " en efectivo y me comprometo a entregar " + dinero(t.aEntregar) + "." })]),
+        boton,
+      );
+    };
+
+    const agregar = (f) => {
+      f = String(f || "").toUpperCase();
+      if (!FOLIO_APP.test(f)) return texto(msg, "Ese folio no es válido.", "err");
+      if (!libres.has(f)) return texto(msg, "El display " + f + " no está libre en tu inventario.", "err");
+      if (L.folios.includes(f)) return texto(msg, f + " ya está en la lista.", "err");
+      if (L.folios.length >= MAX_LOTE) return texto(msg, "Una venta admite hasta " + MAX_LOTE + " displays.", "err");
+      L.folios.push(f);
+      texto(msg, "", "ok");
+      renderDisplays();
+      renderResumen();
+      renderCobro();
+    };
+
+    const renderNegocio = () => {
+      if (L.negocio) {
+        cajaNegocio.replaceChildren(el("div", { clase: "tarjeta" }, [
+          el("span", { clase: "lbl", texto: "1 · Negocio" }),
+          el("b", { texto: L.negocio.nombre }),
+          el("p", { clase: "hint", texto: L.negocio.direccion || "" }),
+          el("button", { type: "button", clase: "btn s sm", on: { click: () => { L.negocio = null; renderNegocio(); renderCobro(); } } }, ["Cambiar negocio"]),
+        ]));
+        return;
+      }
+      const q = el("input", { type: "search", placeholder: "Nombre del negocio", "aria-label": "Buscar negocio", maxlength: "100" });
+      const res = el("div", { clase: "resultados" });
+      let temporizador = null;
+      const buscarAhora = async () => {
+        const t = q.value.trim();
+        if (t.length < 3) return res.replaceChildren();
+        const r = await getJSON("/api/vendedor/buscar-negocio?q=" + enc(t)).catch(() => null);
+        if (!r) return res.replaceChildren(el("p", { clase: "hint", texto: MSG_ERROR_RED }));
+        const items = r.resultados || [];
+        res.replaceChildren(...(items.length
+          ? items.map((x) => el("button", { type: "button", clase: "item", on: { click: () => { L.negocio = x; renderNegocio(); renderCobro(); } } }, [el("b", { texto: x.nombre }), el("span", { texto: x.direccion || "" })]))
+          : [el("p", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
+      };
+      q.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(buscarAhora, 350); });
+      cajaNegocio.replaceChildren(el("span", { clase: "lbl", texto: "1 · Negocio" }), q, res);
+    };
+
+    const renderCliente = () => {
+      const nombre = el("input", { value: L.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
+      const wa = el("input", { value: L.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
+      nombre.addEventListener("input", () => { L.nombre = nombre.value; });
+      wa.addEventListener("input", () => { L.wa = wa.value; });
+      cajaCliente.replaceChildren(el("span", { clase: "lbl", texto: "2 · Cliente" }), campo("Nombre de quien recibe", nombre), campo("WhatsApp", wa));
+    };
+
+    const renderDisplays = () => {
+      const bloqueado = Boolean(L.ventaId);
+      const quitar = (f) => el("button", { type: "button", clase: "btn s sm", "aria-label": "Quitar " + f, on: { click: () => { L.folios = L.folios.filter((x) => x !== f); renderDisplays(); renderResumen(); renderCobro(); } } }, ["Quitar"]);
+      const filas = L.folios.map((f) => el("li", {}, [el("div", { clase: "fila" }, [el("span", { clase: "folio sm", texto: f }), bloqueado ? el("span") : quitar(f)])]));
+      const folioIn = el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", autocapitalize: "characters", "aria-label": "Folio del display" });
+      const sugeridos = [...libres].filter((f) => !L.folios.includes(f)).slice(0, 6);
+      const pararLector = () => pararCamara();
+      const escanear = el("button", { type: "button", clase: "btn s", on: { click: () => {
+        visor.replaceChildren();
+        leerQr((f) => { visor.replaceChildren(); agregar(f); }, (cancelar) => {
+          pararCamara = cancelar;
+          visor.append(el("button", { type: "button", clase: "btn s sm", on: { click: () => { pararLector(); visor.replaceChildren(); } } }, ["Cerrar cámara"]));
+        }, (m, video) => {
+          if (video) return visor.prepend(video);
+          texto(msg, m, "err");
+        });
+      } } }, ["Escanear QR"]);
+      cajaDisplays.replaceChildren(
+        el("span", { clase: "lbl", texto: "3 · Displays (" + L.folios.length + "/" + MAX_LOTE + ")" }),
+        bloqueado
+          ? el("p", { clase: "hint", texto: "La venta ya se creó. Reintenta el cobro para activarla." })
+          : el("div", {}, [
+            el("div", { clase: "fila" }, [folioIn, el("button", { type: "button", clase: "btn s sm", on: { click: () => { agregar(folioIn.value.trim()); folioIn.value = ""; } } }, ["Agregar"])]),
+            el("div", { clase: "fila", style: "margin-top:8px;flex-wrap:wrap" }, [escanear]),
+            sugeridos.length ? el("div", { clase: "seg" }, sugeridos.map((f) => el("button", { type: "button", on: { click: () => agregar(f) } }, [f]))) : el("span"),
+          ]),
+        filas.length ? el("ul", { clase: "lista" }, filas) : el("p", { clase: "hint", texto: "Aún no agregas displays." }),
+        visor,
+      );
+    };
+
+    const montar = () => {
+      raiz.replaceChildren(
+        el("h2", { texto: "Activar varios" }),
+        el("p", { clase: "sub", texto: "Elige el negocio y el cliente una vez, y después agrega los displays. Promoción: " + PROMO_N + " por " + dinero(PROMO_PRECIO) + " en la misma venta." }),
+        cajaNegocio,
+        cajaCliente,
+        cajaDisplays,
+        cajaResumen,
+        cajaCobro,
+        msg,
+      );
+      renderNegocio();
+      renderCliente();
+      renderDisplays();
+      renderResumen();
+      renderCobro();
+    };
+
+    const pantallaLoteListo = () => {
+      const n = L.hecho.length;
+      raiz.replaceChildren(
+        el("h2", { texto: n + (n === 1 ? " display activo" : " displays activos") }),
+        el("p", { clase: "sub", texto: "Desde ahora, cada escaneo lleva a dejar una reseña de " + L.negocio.nombre + "." }),
+        el("div", { clase: "tarjeta" }, [el("dl", { clase: "kv" }, [
+          el("dt", { texto: "Negocio" }), el("dd", { texto: L.negocio.nombre }),
+          el("dt", { texto: "Dirección" }), el("dd", { texto: L.negocio.direccion || "—" }),
+          el("dt", { texto: "Cliente" }), el("dd", { texto: L.nombre.trim() }),
+        ])]),
+        el("span", { clase: "lbl", texto: "Displays activados" }),
+        el("ul", { clase: "lista" }, L.hecho.map((f) => el("li", {}, [el("span", { clase: "folio sm", texto: f })]))),
+        el("button", { type: "button", clase: "btn s", on: { click: () => { L.folios = []; L.ventaId = null; L.hecho = null; montar(); } } }, ["Agregar más a este negocio"]),
+        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { aviso = n + (n === 1 ? " display activado." : " displays activados."); ir("#/hoy"); } } }, ["Terminar"]),
+      );
+    };
+
+    montar();
+    return [raiz];
+  }
+
   async function pVarios() {
     return [
       el("h2", { texto: "Varios" }),
       el("div", { clase: "lista" }, [
         el("div", { clase: "campo" }, [menuItem("Mis ventas", "#/ventas")]),
         el("div", { clase: "campo" }, [menuItem("Mi cuenta", "#/cuenta")]),
-        el("div", { clase: "campo" }, [menuItem("Vender varios displays", "#/vender")]),
+        el("div", { clase: "campo" }, [menuItem("Activar varios displays", "#/lote")]),
         el("a", { clase: "item", href: WA_AYUDA, target: "_blank", rel: "noopener" }, [el("b", { texto: "Hablar con soporte" }), el("span", { texto: "WhatsApp de Bien Visto" })]),
       ]),
     ];
