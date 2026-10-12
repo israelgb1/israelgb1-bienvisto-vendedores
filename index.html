@@ -171,6 +171,18 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 .promo p{margin:0;font-size:15px;line-height:1.3}
 .promo p b{font-weight:700}
 .promo.on{background:#E3F2EC;border-color:var(--verde)}.promo.on .pb{background:var(--verde);color:#fff}
+.price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.price b{font:600 40px/1 var(--fd);color:var(--verde)}
+.split .me{background:var(--ambar)}
+.meth{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.meth button{margin:0;color:var(--tinta);border:2px solid var(--borde-s);border-radius:16px;padding:10px 4px;font-weight:600;font-size:13.5px;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:76px;background:#fff;line-height:1.15;text-align:center}
+.meth button[aria-pressed=true]{border-color:var(--verde);background:var(--menta);box-shadow:inset 0 0 0 1px var(--verde)}
+.meth button:disabled{opacity:.55;cursor:not-allowed}
+.meth svg{width:26px;height:26px;fill:none;stroke:var(--verde);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chk{margin:0;color:var(--tinta);display:flex;gap:12px;align-items:flex-start;padding:12px;border:2px solid var(--borde-s);border-radius:12px;background:#fff;text-align:left;width:100%;font-size:14.5px;line-height:1.4}
+.chk i{flex:none;width:26px;height:26px;border:2px solid var(--borde-s);border-radius:8px;display:grid;place-items:center;background:#fff;margin-top:1px}
+.chk svg{width:16px;height:16px;display:none}
+.chk[aria-checked=true]{border-color:var(--verde);background:var(--menta)}.chk[aria-checked=true] i{background:var(--verde);border-color:var(--verde)}.chk[aria-checked=true] svg{display:block}
+.chk.bad{border-color:var(--danger);background:#FDF4F3}
 .tap{display:flex;align-items:center;gap:14px;background:#fff;border:2px dashed var(--borde-s);border-radius:16px;padding:14px;margin-bottom:12px;text-align:left;width:100%}
 .tap svg{width:44px;height:44px;flex:none}
 .tap b{display:block;font:500 18px/1.2 var(--fd)}
@@ -489,6 +501,9 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
   // Iconos de los botones grandes, como en el mockup.
   const ICONO_NFC_TAP = '<svg viewBox="0 0 24 24" fill="none" stroke="#0E6B5C" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1.4" fill="#0E6B5C"/><path d="M10 8.5a5 5 0 0 1 0 7M13.5 5.8a9 9 0 0 1 0 12.4M17 3.2a13 13 0 0 1 0 17.6"/></svg>';
   const ICONO_QR_TAP = '<svg viewBox="0 0 24 24" fill="none" stroke="#0E6B5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg>';
+  const ICONO_CHECK_COBRO = '<svg viewBox="0 0 24 24" fill="none" stroke="#FBF6EC" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+  const ICONO_EFECTIVO = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.8"/></svg>';
+  const ICONO_TRANSFERENCIA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h14l-3-3M20 15H6l3 3"/></svg>';
 
   let nombreVend = "";
   let correoVend = "";
@@ -2466,14 +2481,15 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const n = LOTE.folios.length;
     const t = totalLote(n);
     const msg = el("p", { clase: "msg", role: "status" });
-    const nombre = el("input", { value: LOTE.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
-    const wa = el("input", { value: LOTE.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
-    const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
-    nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
-    wa.addEventListener("input", () => { LOTE.wa = wa.value; });
-    mail.addEventListener("input", () => { LOTE.mail = mail.value; });
-    const marca = el("input", { type: "checkbox", id: "marca-lote" });
-    const boton = el("button", { type: "button", clase: "btn a", style: "margin-top:12px" }, [LOTE.ventaId ? "Reintentar activación" : "Cobrar y activar " + n + (n === 1 ? " display" : " displays")]);
+    let marcado = false;
+    const txtCasilla = "Confirmo que cobré " + dinero(t.total) + " en efectivo y me comprometo a entregar " + dinero(t.aEntregar) + " a Bien Visto.";
+    const chkBtn = el("button", { type: "button", clase: "chk", role: "checkbox", "aria-checked": "false" }, [el("i", {}, [icono(ICONO_CHECK_COBRO)]), el("span", { texto: txtCasilla })]);
+    chkBtn.addEventListener("click", () => {
+      marcado = !marcado;
+      chkBtn.setAttribute("aria-checked", String(marcado));
+      chkBtn.classList.remove("bad");
+    });
+    const boton = el("button", { type: "button", clase: "btn a", style: "margin-top:12px" }, [LOTE.ventaId ? "Reintentar activación" : "Activar " + n + (n === 1 ? " display" : " displays")]);
 
     const activar = async () => {
       texto(msg, "", "ok");
@@ -2481,7 +2497,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       if (eNombre) return texto(msg, eNombre, "err");
       const eWa = errWhatsappCliente(LOTE.wa);
       if (eWa) return texto(msg, eWa, "err");
-      if (!marca.checked) return texto(msg, "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(t.aEntregar) + ".", "err");
+      if (!marcado) { chkBtn.classList.add("bad"); return texto(msg, "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(t.aEntregar) + ".", "err"); }
       boton.disabled = true;
       try {
         if (!LOTE.ventaId) {
@@ -2510,28 +2526,57 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     };
     boton.addEventListener("click", activar);
 
+    // Los datos del cliente solo se piden si faltan (negocio existente sin cliente cargado).
+    const pedirCliente = !LOTE.nombre.trim() || !LOTE.wa.trim();
+    const nombre = el("input", { value: LOTE.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
+    const wa = el("input", { value: LOTE.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
+    const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
+    nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
+    wa.addEventListener("input", () => { LOTE.wa = wa.value; });
+    mail.addEventListener("input", () => { LOTE.mail = mail.value; });
+
+    const formula = t.enPromo
+      ? (n % PROMO_N ? (t.enPromo / PROMO_N) + " promo × " + dinero(PROMO_PRECIO) + " + " + (n % PROMO_N) + " × " + dinero(PRECIO_DISPLAY) : (n / PROMO_N) + " × promo de " + dinero(PROMO_PRECIO)) + " · "
+      : n > 1 ? n + " × " + dinero(PRECIO_DISPLAY) + " · " : "";
+    const pregunta = el("button", { type: "button", clase: "helpl quiet", style: "margin:12px 0 0;text-align:left", "aria-expanded": "false" }, ["¿Qué pasa si activo sin cobrar?"]);
+    const respuesta = el("p", { clase: "hint", hidden: "", texto: "Al activar te comprometes a entregar " + dinero(t.aEntregar) + " a Bien Visto, hayas cobrado o no. Si el cliente no pagó, ese dinero lo pones tú y no ganas la comisión de esa venta." });
+    pregunta.addEventListener("click", () => {
+      const abrir = respuesta.hidden;
+      respuesta.hidden = !abrir;
+      pregunta.setAttribute("aria-expanded", String(abrir));
+    });
+
     return [
       el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · " + n + (n === 1 ? " display" : " displays") })]),
       el("h2", { texto: "Cobra antes de activar" }),
       el("p", { clase: "sub", texto: "El precio es fijo y no se puede cambiar." }),
-      el("div", { clase: "tarjeta" }, [
-        el("b", { texto: dinero(t.total), style: "font:600 32px/1 var(--fd)" }),
-        el("p", { clase: "hint", texto: (t.enPromo ? t.enPromo + " en promoción · " : n > 1 ? n + " × " + dinero(PRECIO_DISPLAY) + " · " : "") + "IVA incluido" }),
-        t.enPromo ? el("p", { clase: "hint", style: "margin:8px 0 0", texto: "Promoción aplicada. El cliente ahorra " + dinero(n * PRECIO_DISPLAY - t.total) + "." }) : el("span"),
+      el("div", { clase: "card" }, [
+        el("div", { clase: "price" }, [
+          el("b", { texto: dinero(t.total) }),
+          el("span", { clase: "hint", style: "margin:0", texto: formula + "IVA incluido" }),
+        ]),
+        t.enPromo ? el("p", { clase: "hint", style: "margin:8px 0 0", texto: "Promoción aplicada. El cliente ahorra " + dinero(n * PRECIO_DISPLAY - t.total) + ". Tu comisión es la misma de siempre." }) : el("span"),
         el("div", { clase: "split", style: "margin-top:12px" }, [
-          el("div", {}, [el("b", { texto: dinero(n * COMISION_DISPLAY) }), el("span", { texto: "Tu comisión" })]),
+          el("div", { clase: "me" }, [el("b", { texto: dinero(n * COMISION_DISPLAY) }), el("span", { texto: "Tu comisión" })]),
           el("div", {}, [el("b", { texto: dinero(t.aEntregar) }), el("span", { texto: "Entregas a Bien Visto" })]),
         ]),
       ]),
-      el("div", { clase: "tarjeta" }, [
+      pedirCliente ? el("div", { clase: "card" }, [
         el("span", { clase: "lbl", texto: "Cliente" }),
         campo("Nombre de quien recibe", nombre),
         campo("WhatsApp", wa),
         campo("Correo (opcional)", mail),
+      ]) : el("span"),
+      el("span", { clase: "lbl", texto: "¿Cómo paga el cliente?" }),
+      el("div", { clase: "meth", role: "group", "aria-label": "Forma de pago" }, [
+        el("button", { type: "button", "aria-pressed": "true" }, [icono(ICONO_EFECTIVO), "Efectivo"]),
+        el("button", { type: "button", "aria-pressed": "false", disabled: "", title: "En lotes solo se cobra en efectivo por ahora" }, [icono(ICONO_TRANSFERENCIA), "Transferencia"]),
       ]),
-      el("label", { clase: "opcion", for: "marca-lote" }, [marca, el("span", { texto: "Confirmo que cobré " + dinero(t.total) + " en efectivo y me comprometo a entregar " + dinero(t.aEntregar) + "." })]),
+      el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Cuenta los " + dinero(t.total) + " frente al cliente antes de activar." }),
+      chkBtn,
       boton,
-      el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => ir("#/lote/actual") } }, ["Volver a los displays"]),
+      pregunta,
+      respuesta,
       msg,
     ];
   }
