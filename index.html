@@ -4808,13 +4808,13 @@ var qrcode = function() {
 
     const validarCliente = () => errNombreCliente(LOTE.nombre) || errWhatsappCliente(LOTE.wa);
     // Crea la venta una sola vez (pendiente) para poder compartir el enlace o activar.
-    const crearVentaLote = async () => {
+    const crearVentaLote = async (donde = msg) => {
       if (LOTE.ventaId) return true;
       const e = validarCliente() || errCorreoCliente(LOTE.mail);
-      if (e) { texto(msg, e, "err"); return false; }
+      if (e) { texto(donde, e, "err"); donde.scrollIntoView({ behavior: "smooth", block: "center" }); return false; }
       const crear = await postJSON("/api/vendedor/ventas", { negocio: LOTE.negocio.nombre, contacto: LOTE.nombre.trim(), whatsapp: LOTE.wa.trim(), correo: LOTE.mail.trim().toLowerCase() || null, metodo: LOTE.metodo, direccion: LOTE.negocio.direccion, folios: LOTE.folios });
       if (crear.status === 401) return false;
-      if (!(crear.status === 201 && crear.datos && crear.datos.success)) { texto(msg, errorDe(crear.datos), "err"); return false; }
+      if (!(crear.status === 201 && crear.datos && crear.datos.success)) { texto(donde, errorDe(crear.datos), "err"); donde.scrollIntoView({ behavior: "smooth", block: "center" }); return false; }
       LOTE.ventaId = crear.datos.id;
       return true;
     };
@@ -4852,10 +4852,12 @@ var qrcode = function() {
     // Enlace de pago para el cliente (solo transferencia): se comparte o se muestra como QR.
     const enlacePago = () => "https://ir.bienvisto.com.mx/pago/" + LOTE.ventaId;
     const qrBox = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:10px" });
+    const msgQr = el("p", { clase: "msg", role: "status" });
     // Librería de QR (MIT) desde jsDelivr; se carga solo cuando el vendedor la pide.
     // La librería QR va incluida en la página (ver arriba): no depende de ningún CDN.
     const btnQr = el("button", { type: "button", clase: "btn s", on: { click: async () => {
-      if (!(await crearVentaLote())) return;
+      texto(msgQr, "", "ok");
+      if (!(await crearVentaLote(msgQr))) return;
       qrBox.textContent = "";
       try {
         if (typeof window.qrcode !== "function") throw new Error("qr");
@@ -4867,17 +4869,23 @@ var qrcode = function() {
         if (svg) svg.style.width = "220px";
         qrBox.scrollIntoView({ behavior: "smooth", block: "center" });
       } catch (_) {
-        qrBox.appendChild(el("p", { clase: "hint", texto: "No pudimos generar el QR. Recarga la página e intenta de nuevo, o usa Compartir datos." }));
+        texto(msgQr, "No pudimos generar el QR. Recarga la página e intenta de nuevo.", "err");
+        msgQr.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     } } }, ["Generar QR"]);
     const compartir = el("button", { type: "button", clase: "btn p", on: { click: async () => {
-      if (!(await crearVentaLote())) return;
+      texto(msgQr, "", "ok");
+      if (!(await crearVentaLote(msgQr))) return;
       const textoEnlace = "Paga tu display Bien Visto aquí: " + enlacePago();
-      if (!navigator.share) return btnQr.click();
+      if (!navigator.share) {
+        texto(msgQr, "Tu navegador no abre el menú de compartir. Te muestro el QR para que lo escanee el cliente.", "ok");
+        return btnQr.click();
+      }
       try {
         await navigator.share({ title: "Datos para pagar", text: textoEnlace });
       } catch (err) {
         if (err && err.name === "AbortError") return;
+        texto(msgQr, "No se pudo abrir el menú de compartir. Te muestro el QR para que lo escanee el cliente.", "err");
         btnQr.click();
       }
     } } }, ["Compartir datos"]);
@@ -4921,6 +4929,7 @@ var qrcode = function() {
           ]),
         ]),
         el("div", { clase: "dos" }, [compartir, btnQr]),
+        msgQr,
         qrBox,
         el("p", { clase: "hint", texto: "Tu cliente abre el enlace y ve estos datos para pagar el monto exacto." }),
         el("label", { clase: "lbl", for: "rastreo-lote", texto: "Clave de rastreo (opcional)" }),
