@@ -3054,6 +3054,43 @@ var qrcode = function() {
     folioInput.addEventListener("input", () => { if (folioInput.value.trim().length === 4) abrirFolio(); });
     const nodos = [el("h2", { texto: "Hola, " + primer })];
     if (s.impago) nodos.push(el("div", { clase: "aviso alerta", texto: "Tienes un adeudo por impago. No puedes activar displays nuevos." }));
+    // Pruebas activas: aviso en Inicio hasta que se cumplan los 30 minutos (el servidor libera el display al vencer).
+    const enPrueba = (d.displays || []).filter((x) => x.estado === "prueba" && Number(x.prueba_min_restantes) > 0);
+    if (enPrueba.length) {
+      const msgPrueba = el("p", { clase: "msg", role: "status" });
+      const filas = enPrueba.map((x) => {
+        const min = Number(x.prueba_min_restantes);
+        const terminar = async (boton) => {
+          boton.disabled = true;
+          const { status, datos } = await postJSON("/api/vendedor/pruebas/" + enc(x.folio) + "/terminar", {});
+          if (status === 401) return;
+          if (status === 200 && datos && datos.success) {
+            borrarPrueba(x.folio);
+            ventasCache = [];
+            aviso = "Prueba terminada. " + x.folio + " quedó libre.";
+            return render();
+          }
+          boton.disabled = false;
+          texto(msgPrueba, errorDe(datos), "err");
+        };
+        const botonTerminar = el("button", { type: "button", clase: "btn p sm", style: "width:auto;flex:none;margin:0", on: { click: () => terminar(botonTerminar) } }, ["Sí, terminar"]);
+        return el("div", { style: "padding:10px 0;border-top:1px solid var(--menta)" }, [
+          el("div", { clase: "fila", style: "justify-content:space-between;align-items:center;gap:10px;padding:0" }, [
+            el("div", { style: "min-width:0" }, [
+              el("span", { clase: "folio", texto: x.folio }),
+              el("p", { clase: "hint", style: "margin:4px 0 0", texto: (x.negocio_asignado || "Negocio") + " · quedan " + min + " min" }),
+            ]),
+            botonTerminar,
+          ]),
+          el("p", { clase: "hint", style: "margin:8px 0 0", texto: "¿Terminar la prueba de " + x.folio + "? El display queda libre y no se guarda nada del cliente." }),
+          el("button", { type: "button", clase: "helpl quiet", style: "margin:4px 0 0;text-align:left", on: { click: () => ir("#/prueba/" + enc(x.folio)) } }, ["Ver la prueba"]),
+        ]);
+      });
+      nodos.push(el("div", { clase: "tarjeta", role: "status" }, [el("b", { texto: "Tienes un display en prueba" }), ...filas, msgPrueba]));
+      // Al vencer los 30 minutos, el aviso se quita solo si la pantalla de inicio sigue abierta.
+      const proximo = Math.min(...enPrueba.map((x) => Number(x.prueba_min_restantes))) * 60000 + 1000;
+      setTimeout(() => { if (location.hash === "#/hoy" || location.hash === "") render(); }, Math.max(1000, proximo));
+    }
     nodos.push(
       el("button", { type: "button", clase: "venta", on: { click: () => ir("#/vender") } }, [
         el("span", { clase: "vi" }, [icono(ICONO_NFC)]),
