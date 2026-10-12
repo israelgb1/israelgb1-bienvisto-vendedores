@@ -5219,18 +5219,30 @@ var qrcode = function() {
 
   // Varios = "Activar varios" del mockup: promoción, negocio nuevo y negocios con displays activos.
   async function pVarios() {
-    const d = await getJSON("/api/vendedor/displays");
+    const d = await getJSON("/api/vendedor/ventas");
     if (!d) return null;
-    const grupos = new Map();
-    for (const x of (d.displays || []).filter((y) => y.estado === "activo" && y.negocio_asignado)) {
-      const g = grupos.get(x.negocio_asignado) || { nombre: x.negocio_asignado, direccion: x.direccion || "", enlace: x.url_destino || "", n: 0 };
-      g.n += 1;
-      grupos.set(x.negocio_asignado, g);
+    // Clientes anteriores: los últimos negocios (con su contacto) a los que vendiste, sin repetir.
+    const vistos = new Set();
+    const recientes = [];
+    for (const v of (d.ventas || [])) {
+      if (!v.negocio || v.estado === "anulada" || v.estado === "rechazada") continue;
+      const clave = v.negocio + "|" + (v.contacto || "");
+      if (vistos.has(clave)) continue;
+      vistos.add(clave);
+      recientes.push(v);
+      if (recientes.length === 4) break;
     }
-    const filas = [...grupos.values()].map((g) => el("button", { type: "button", clase: "li", on: { click: () => { LOTE = nuevoLote({ nombre: g.nombre, direccion: g.direccion, enlace_resena: g.enlace }); ir("#/lote/actual"); } } }, [
+    const fechaCorta = (x) => { const f = new Date(x); return isNaN(f) ? "" : f.toLocaleDateString("es-MX", { day: "numeric", month: "short" }); };
+    const filas = recientes.map((v) => el("button", { type: "button", clase: "li", on: { click: () => {
+      LOTE = nuevoLote({ nombre: v.negocio, direccion: v.direccion || "", enlace_resena: v.url_destino || "" });
+      LOTE.nombre = v.contacto || "";
+      LOTE.wa = v.whatsapp || "";
+      LOTE.mail = v.correo || "";
+      ir("#/lote/actual");
+    } } }, [
       el("span", { clase: "grow" }, [
-        el("span", { clase: "t", texto: g.nombre }),
-        el("span", { clase: "m", texto: (g.direccion || "Sin dirección") + " · " + g.n + (g.n === 1 ? " display" : " displays") }),
+        el("span", { clase: "t", texto: v.negocio }),
+        el("span", { clase: "m", texto: [v.contacto, v.direccion, fechaCorta(v.created_at)].filter(Boolean).join(" · ") }),
       ]),
       icono('<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>'),
     ]));
@@ -5245,7 +5257,11 @@ var qrcode = function() {
         ]),
       ]),
       el("button", { type: "button", clase: "btn p", on: { click: () => { LOTE = null; ir("#/lote/nuevo"); } } }, ["Negocio nuevo"]),
-      ...(filas.length ? [el("span", { clase: "lbl", texto: "Sucursales de tus clientes" }), el("div", { clase: "lista-filas" }, filas)] : []),
+      ...(filas.length ? [
+        el("span", { clase: "lbl", texto: "Clientes anteriores" }),
+        el("p", { clase: "hint", style: "margin:0 0 8px", texto: "Toca uno para venderle otro display sin volver a escribir sus datos." }),
+        el("div", { clase: "lista-filas" }, filas),
+      ] : []),
     ]);
   }
 
