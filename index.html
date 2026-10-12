@@ -788,7 +788,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
     let cercanosCache = null;
     // Los mensajes de esta búsqueda van en la lista, junto al botón, no al final del formulario.
     const avisoLista = (txto) => resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: txto })]));
-    const usarUbicacion = async () => {
+    const ubicarYBuscar = async () => {
       const mi = ++turnoBusqueda;
       clearTimeout(temporizador);
       texto(msg, "", "ok");
@@ -817,6 +817,19 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
         if (mi !== turnoBusqueda) return;
         const permiso = err && err.code === 1;
         avisoLista(permiso ? "Permite el acceso a tu ubicación en el navegador, o escribe el nombre del negocio." : "No pudimos obtener tu ubicación. Escribe el nombre del negocio.");
+      }
+    };
+    // Un solo envío a la vez: los toques extra mientras se busca se ignoran.
+    let buscandoCerca = false;
+    const usarUbicacion = async () => {
+      if (buscandoCerca) return;
+      buscandoCerca = true;
+      cercanosBtn.disabled = true;
+      try {
+        await ubicarYBuscar();
+      } finally {
+        buscandoCerca = false;
+        cercanosBtn.disabled = false;
       }
     };
 
