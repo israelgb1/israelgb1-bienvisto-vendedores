@@ -52,6 +52,34 @@ button.sec{background:transparent;color:var(--verde-visto);border:1px solid var(
 .pie a{color:var(--verde-visto);font-weight:600}
 .pie .boton-soporte{display:inline-block;text-align:center;text-decoration:none;width:auto;padding:10px 16px;margin-top:12px;background:transparent;color:var(--verde-visto);border:1px solid var(--borde-fuerte);border-radius:10px;font-size:15px}
 .enlace:disabled{color:var(--tinta-suave);text-decoration:none}
+[hidden]{display:none!important}
+/* Panel de vendedor */
+body.con-tabs main{padding-bottom:110px}
+body.con-tabs .pie{display:none}
+.vista h2{font-size:28px;line-height:34px;margin:8px 0 16px}
+.vista .etiqueta{margin:0 0 4px}
+.tarjeta{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:16px;margin:0 0 12px}
+.tarjeta p{margin:4px 0 0}
+.num{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:600;font-size:36px;line-height:42px;margin:0;color:var(--verde-visto)}
+.aviso{background:var(--menta);border-radius:10px;padding:12px;margin:0 0 12px;color:var(--tinta)}
+.aviso.alerta{background:#FDECEA;color:var(--error)}
+select,textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:1px solid var(--borde-fuerte);border-radius:10px;background:#fff;color:var(--tinta)}
+textarea{min-height:80px}
+.campo{margin:0 0 16px}
+.lista{list-style:none;margin:0;padding:0}
+.lista li{margin:0 0 8px}
+.item{display:block;width:100%;text-align:left;margin:0;padding:14px;background:#fff;color:var(--tinta);border:1px solid var(--borde);border-radius:12px;font-weight:400}
+.item strong{display:block;font-weight:600}
+.item span{font-size:14px;line-height:20px;color:var(--tinta-suave)}
+.estado{display:inline-block;font-size:13px;line-height:16px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--menta);color:var(--tinta)}
+.estado.pendiente{background:#FFF3D6;color:var(--ambar-texto)}
+.estado.cobrada,.estado.entregada{color:var(--verde-visto)}
+.estado.anulada{background:#FDECEA;color:var(--error)}
+.opcion{display:flex;gap:10px;align-items:center;font-size:16px;margin:0 0 10px;color:var(--tinta)}
+.opcion input{width:auto;margin:0}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--borde);display:flex;justify-content:center;z-index:10}
+.tabs button{flex:1;max-width:70px;width:auto;margin:0;padding:10px 2px;border-radius:0;background:transparent;color:var(--tinta-suave);font-size:12px;line-height:16px}
+.tabs button[aria-current="page"]{color:var(--verde-visto);box-shadow:inset 0 3px 0 var(--verde-visto)}
 </style>
 </head>
 <body>
@@ -90,8 +118,127 @@ button.sec{background:transparent;color:var(--verde-visto);border:1px solid var(
   </section>
 
   <section id="paso-sesion" class="paso" hidden>
-    <p class="msg ok">Sesión iniciada.</p>
-    <button id="btn-salir" class="sec" type="button">Cerrar sesión</button>
+    <div class="vista" id="v-inicio">
+      <h2>Hola, <span id="nombre-vend"></span></h2>
+      <div class="tarjeta">
+        <p class="etiqueta">Dinero por entregar</p>
+        <p class="num" id="custodia">—</p>
+        <p id="custodia-tope"></p>
+      </div>
+      <div class="tarjeta">
+        <p class="etiqueta">Plazo de entrega</p>
+        <p id="plazo"></p>
+      </div>
+      <div id="aviso-inicio" class="aviso" hidden></div>
+    </div>
+
+    <div class="vista" id="v-ventas" hidden>
+      <h2>Mis ventas</h2>
+      <ul id="lista-ventas" class="lista"></ul>
+      <p id="msg-ventas" class="msg" role="status"></p>
+    </div>
+
+    <div class="vista" id="v-detalle" hidden>
+      <button type="button" id="btn-volver-ventas" class="sec">Volver a mis ventas</button>
+      <div id="detalle" class="bloque"></div>
+      <form id="form-revision" novalidate hidden>
+        <div class="campo">
+          <label for="referencia">Referencia de transferencia (solo si te pagaron por transferencia)</label>
+          <input id="referencia" name="referencia" maxlength="100">
+        </div>
+        <button id="btn-revision" type="submit">Enviar a revisión</button>
+      </form>
+      <button type="button" id="btn-anular" class="sec" hidden>Pedir anulación</button>
+      <p id="msg-detalle" class="msg" role="status"></p>
+    </div>
+
+    <div class="vista" id="v-vender" hidden>
+      <h2>Registrar venta</h2>
+      <form id="form-venta" novalidate>
+        <div class="campo">
+          <label for="v-negocio">Nombre del negocio</label>
+          <input id="v-negocio" maxlength="200">
+        </div>
+        <div class="campo">
+          <label for="v-contacto">Persona de contacto (opcional)</label>
+          <input id="v-contacto" maxlength="120">
+        </div>
+        <div class="campo">
+          <label for="v-whatsapp">WhatsApp del negocio (opcional)</label>
+          <input id="v-whatsapp" inputmode="tel" placeholder="Ej. 33 1234 5678">
+        </div>
+        <div class="campo">
+          <label for="v-metodo">Forma de pago</label>
+          <select id="v-metodo">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+        <p class="etiqueta">Displays que vendes</p>
+        <div id="folios-libres" class="campo"></div>
+        <button id="btn-vender" type="submit">Registrar venta</button>
+      </form>
+      <p id="msg-vender" class="msg" role="status"></p>
+    </div>
+
+    <div class="vista" id="v-displays" hidden>
+      <h2>Mis displays</h2>
+      <ul id="lista-displays" class="lista"></ul>
+      <p id="msg-displays" class="msg" role="status"></p>
+    </div>
+
+    <div class="vista" id="v-solicitudes" hidden>
+      <h2>Pedir cambio</h2>
+      <form id="form-solicitud" novalidate>
+        <div class="campo">
+          <label for="s-tipo">¿Qué necesitas?</label>
+          <select id="s-tipo">
+            <option value="reponer">Reponer el display</option>
+            <option value="cambiar">Cambiarlo de negocio</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="s-folio">Display</label>
+          <select id="s-folio"></select>
+        </div>
+        <div id="campos-cambiar" hidden>
+          <div class="campo">
+            <label for="s-nuevo">Nombre del nuevo negocio</label>
+            <input id="s-nuevo" maxlength="200">
+          </div>
+          <div class="campo">
+            <label for="s-url">Enlace de reseña de Google del nuevo negocio</label>
+            <input id="s-url" type="url" placeholder="https://...">
+          </div>
+        </div>
+        <div class="campo">
+          <label for="s-motivo">Motivo (opcional)</label>
+          <input id="s-motivo" maxlength="200">
+        </div>
+        <div class="campo">
+          <label for="s-nota">Nota (opcional)</label>
+          <textarea id="s-nota" maxlength="500"></textarea>
+        </div>
+        <button id="btn-solicitar" type="submit">Enviar solicitud</button>
+      </form>
+      <p id="msg-solicitud" class="msg" role="status"></p>
+    </div>
+
+    <div class="vista" id="v-cuenta" hidden>
+      <h2>Tu cuenta</h2>
+      <p class="guia">Sesión iniciada como <span id="cuenta-nombre"></span>.</p>
+      <button id="btn-salir" class="sec" type="button">Cerrar sesión</button>
+      <a class="boton-soporte" href="https://wa.me/522201435851?text=Hola%2C%20soy%20vendedor%20de%20Bien%20Visto%20y%20necesito%20ayuda%20con%20mi%20panel." target="_blank" rel="noopener">Hablar con soporte</a>
+    </div>
+
+    <nav id="tabs" class="tabs" aria-label="Secciones">
+      <button type="button" data-vista="inicio">Inicio</button>
+      <button type="button" data-vista="ventas">Ventas</button>
+      <button type="button" data-vista="vender">Vender</button>
+      <button type="button" data-vista="displays">Displays</button>
+      <button type="button" data-vista="solicitudes">Pedir</button>
+      <button type="button" data-vista="cuenta">Cuenta</button>
+    </nav>
   </section>
   <footer class="pie">
     <p>¿Quieres vender Bien Visto? <a href="https://bienvisto.com.mx/vendedores">Conoce el programa</a>.</p>
@@ -115,6 +262,8 @@ button.sec{background:transparent;color:var(--verde-visto);border:1px solid var(
 
   function mostrar(id) {
     for (const s of document.querySelectorAll(".paso")) s.hidden = s.id !== id;
+    document.body.classList.toggle("con-tabs", id === "paso-sesion");
+    if (id === "paso-sesion") entrarPanel();
   }
 
   function texto(el, msg, tipo) {
@@ -222,6 +371,313 @@ button.sec{background:transparent;color:var(--verde-visto);border:1px solid var(
   $("form-codigo").addEventListener("submit", verificarCodigo);
   $("btn-reenviar").addEventListener("click", (e) => pedirCodigo(e, true));
   $("btn-cambiar").addEventListener("click", volverACorreo);
+  // ===== Panel del vendedor =====
+  const $$ = (sel) => document.querySelectorAll(sel);
+  const dinero = (n) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n) || 0);
+  const ESTADO_TXT = { pendiente: "Pendiente", rev: "En revisión", cobrada: "Cobrada", entregada: "Entregada", anulada: "Anulada" };
+  const DISPLAY_TXT = { libre: "Libre", activo: "Activo" };
+  let nombreVend = "";
+  let ventasCache = [];
+  let ventaActual = null;
+
+  function el(tag, props, hijos) {
+    const n = document.createElement(tag);
+    for (const k in props || {}) {
+      if (k === "texto") n.textContent = props[k];
+      else if (k === "clase") n.className = props[k];
+      else n.setAttribute(k, props[k]);
+    }
+    for (const h of hijos || []) n.append(h);
+    return n;
+  }
+
+  function sesionCaducada() {
+    volverACorreo();
+    texto($("msg-correo"), "Tu sesión venció. Entra de nuevo con tu correo.", "err");
+  }
+
+  async function getJSON(ruta) {
+    const res = await fetch(ruta);
+    if (res.status === 401) { sesionCaducada(); return null; }
+    if (!res.ok) throw new Error("http " + res.status);
+    return res.json();
+  }
+
+  async function postJSON(ruta, cuerpo) {
+    const res = await fetch(ruta, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo || {}),
+    });
+    if (res.status === 401) { sesionCaducada(); return { status: 401, datos: null }; }
+    let datos = null;
+    try { datos = await res.json(); } catch (_) { datos = null; }
+    return { status: res.status, datos };
+  }
+
+  function errorDe(datos) {
+    return (datos && datos.error) || MSG_ERROR_GENERAL;
+  }
+
+  function mostrarVista(nombre) {
+    for (const v of $$(".vista")) v.hidden = v.id !== "v-" + nombre;
+    for (const b of $$("#tabs button")) {
+      if (b.dataset.vista === nombre) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
+    }
+    const cargas = {
+      inicio: cargarInicio,
+      ventas: cargarVentas,
+      vender: cargarLibres,
+      displays: cargarDisplays,
+      solicitudes: cargarActivos,
+    };
+    if (cargas[nombre]) cargas[nombre]();
+    window.scrollTo(0, 0);
+  }
+
+  async function entrarPanel() {
+    try {
+      const d = await getJSON("/api/vendedor/yo");
+      if (d) {
+        nombreVend = d.nombre || "";
+        $("nombre-vend").textContent = nombreVend.split(" ")[0] || "";
+        $("cuenta-nombre").textContent = nombreVend;
+      }
+    } catch (_) { /* el panel sigue; las pantallas muestran su propio error */ }
+    mostrarVista("inicio");
+  }
+
+  async function cargarInicio() {
+    const aviso = $("aviso-inicio");
+    aviso.hidden = true;
+    try {
+      const d = await getJSON("/api/vendedor/saldo");
+      if (!d) return;
+      $("custodia").textContent = dinero(d.custodia);
+      $("custodia-tope").textContent = "Tu tope es " + dinero(d.tope) + ". Si llegas al tope, entrega antes de activar más displays.";
+      let plazo;
+      if (d.horas_restantes === null) plazo = "No tienes ventas cobradas pendientes de entregar.";
+      else if (d.plazo_vencido) plazo = "Tu plazo de entrega venció. Entrega lo cobrado para poder activar displays nuevos.";
+      else plazo = "Te quedan " + d.horas_restantes + " horas para entregar lo cobrado.";
+      $("plazo").textContent = plazo;
+      if (d.impago) {
+        aviso.textContent = "Tienes un adeudo por impago. No puedes activar displays nuevos hasta resolverlo.";
+        aviso.className = "aviso alerta";
+        aviso.hidden = false;
+      }
+    } catch (_) {
+      $("custodia").textContent = "—";
+      $("plazo").textContent = MSG_ERROR_RED;
+    }
+  }
+
+  async function cargarVentas() {
+    const ul = $("lista-ventas");
+    ul.replaceChildren();
+    $("msg-ventas").textContent = "";
+    try {
+      const d = await getJSON("/api/vendedor/ventas");
+      if (!d) return;
+      ventasCache = d.ventas || [];
+      if (!ventasCache.length) { $("msg-ventas").textContent = "Aún no tienes ventas registradas."; return; }
+      for (const v of ventasCache) {
+        const boton = el("button", { type: "button", clase: "item" }, [
+          el("strong", { texto: v.negocio }),
+          el("div", {}, [el("span", { clase: "estado " + v.estado, texto: ESTADO_TXT[v.estado] || v.estado })]),
+          el("span", { texto: dinero(v.total) + " · " + (v.displays || 0) + " display(s) · " + String(v.created_at || "").slice(0, 10) }),
+        ]);
+        boton.addEventListener("click", () => abrirDetalle(v.id));
+        ul.append(el("li", {}, [boton]));
+      }
+    } catch (_) {
+      $("msg-ventas").textContent = MSG_ERROR_RED;
+      $("msg-ventas").className = "msg err";
+    }
+  }
+
+  function abrirDetalle(id) {
+    const v = ventasCache.find((x) => x.id === id);
+    if (!v) return;
+    ventaActual = v;
+    $("msg-detalle").textContent = "";
+    $("msg-detalle").className = "msg";
+    $("detalle").replaceChildren(
+      el("div", { clase: "tarjeta" }, [
+        el("strong", { texto: v.negocio }),
+        el("p", { texto: "Total: " + dinero(v.total) }),
+        el("p", { texto: "Por entregar: " + dinero(v.a_entregar) }),
+        el("p", { texto: "Ya entregado: " + dinero(v.entregado) }),
+        el("p", { texto: "Displays: " + (v.displays || 0) }),
+        el("p", {}, [el("span", { clase: "estado " + v.estado, texto: ESTADO_TXT[v.estado] || v.estado })]),
+      ])
+    );
+    $("form-revision").hidden = v.estado !== "pendiente";
+    $("btn-anular").hidden = !(["pendiente", "rev", "cobrada"].includes(v.estado) && Number(v.entregado || 0) === 0);
+    mostrarVista("detalle");
+  }
+
+  $("form-revision").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("msg-detalle");
+    $("btn-revision").disabled = true;
+    try {
+      const { status, datos } = await postJSON("/api/vendedor/ventas/" + ventaActual.id + "/revision", { referencia: $("referencia").value.trim() });
+      if (status === 200 && datos && datos.success) {
+        mostrarVista("ventas");
+        await cargarVentas();
+        texto($("msg-ventas"), "Venta enviada a revisión.", "ok");
+      } else if (status !== 401) {
+        texto(msg, errorDe(datos), "err");
+      }
+    } catch (_) {
+      texto(msg, MSG_ERROR_RED, "err");
+    } finally {
+      $("btn-revision").disabled = false;
+    }
+  });
+
+  $("btn-anular").addEventListener("click", async () => {
+    const msg = $("msg-detalle");
+    $("btn-anular").disabled = true;
+    try {
+      const { status, datos } = await postJSON("/api/vendedor/solicitudes", { tipo: "anular", venta_id: ventaActual.id });
+      if (status === 201 && datos && datos.success) texto(msg, "Solicitud de anulación enviada.", "ok");
+      else if (status !== 401) texto(msg, errorDe(datos), "err");
+    } catch (_) {
+      texto(msg, MSG_ERROR_RED, "err");
+    } finally {
+      $("btn-anular").disabled = false;
+    }
+  });
+
+  async function cargarDisplays() {
+    const ul = $("lista-displays");
+    ul.replaceChildren();
+    $("msg-displays").textContent = "";
+    try {
+      const d = await getJSON("/api/vendedor/displays");
+      if (!d) return;
+      const lista = d.displays || [];
+      if (!lista.length) { $("msg-displays").textContent = "Aún no tienes displays asignados."; return; }
+      for (const f of lista) {
+        ul.append(el("li", {}, [
+          el("div", { clase: "tarjeta" }, [
+            el("strong", { texto: f.folio }),
+            el("p", { texto: (DISPLAY_TXT[f.estado] || f.estado) + " · " + (f.negocio_asignado || "Sin negocio asignado") }),
+          ]),
+        ]));
+      }
+    } catch (_) {
+      $("msg-displays").textContent = MSG_ERROR_RED;
+      $("msg-displays").className = "msg err";
+    }
+  }
+
+  async function cargarLibres() {
+    const cont = $("folios-libres");
+    cont.replaceChildren();
+    try {
+      const d = await getJSON("/api/vendedor/displays");
+      if (!d) return;
+      const libres = (d.displays || []).filter((x) => x.estado === "libre");
+      $("btn-vender").disabled = !libres.length;
+      if (!libres.length) { cont.append(el("p", { texto: "No tienes displays libres para vender." })); return; }
+      for (const f of libres) {
+        cont.append(el("label", { clase: "opcion" }, [el("input", { type: "checkbox", value: f.folio, name: "folio" }), f.folio]));
+      }
+    } catch (_) {
+      texto($("msg-vender"), MSG_ERROR_RED, "err");
+    }
+  }
+
+  $("form-venta").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("msg-vender");
+    texto(msg, "", "ok");
+    const folios = [...$("folios-libres").querySelectorAll("input:checked")].map((i) => i.value);
+    const negocio = $("v-negocio").value.trim();
+    if (!negocio) return texto(msg, "Escribe el nombre del negocio.", "err");
+    if (!folios.length) return texto(msg, "Elige al menos un display.", "err");
+    $("btn-vender").disabled = true;
+    try {
+      const cuerpo = {
+        negocio,
+        contacto: $("v-contacto").value.trim(),
+        whatsapp: $("v-whatsapp").value.trim(),
+        metodo: $("v-metodo").value,
+        folios,
+      };
+      const { status, datos } = await postJSON("/api/vendedor/ventas", cuerpo);
+      if (status === 201 && datos && datos.success) {
+        $("form-venta").reset();
+        await cargarLibres();
+        texto(msg, "Venta registrada. Quedó pendiente: envíala a revisión desde Ventas.", "ok");
+      } else if (status !== 401) {
+        texto(msg, errorDe(datos), "err");
+      }
+    } catch (_) {
+      texto(msg, MSG_ERROR_RED, "err");
+    } finally {
+      $("btn-vender").disabled = false;
+    }
+  });
+
+  async function cargarActivos() {
+    const sel = $("s-folio");
+    sel.replaceChildren();
+    try {
+      const d = await getJSON("/api/vendedor/displays");
+      if (!d) return;
+      const activos = (d.displays || []).filter((x) => x.estado === "activo");
+      $("btn-solicitar").disabled = !activos.length;
+      if (!activos.length) { sel.append(el("option", { value: "", texto: "No tienes displays activos" })); return; }
+      for (const f of activos) {
+        sel.append(el("option", { value: f.folio, texto: f.folio + (f.negocio_asignado ? " · " + f.negocio_asignado : "") }));
+      }
+    } catch (_) {
+      texto($("msg-solicitud"), MSG_ERROR_RED, "err");
+    }
+  }
+
+  function ajustarTipoSolicitud() {
+    $("campos-cambiar").hidden = $("s-tipo").value !== "cambiar";
+  }
+  $("s-tipo").addEventListener("change", ajustarTipoSolicitud);
+
+  $("form-solicitud").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("msg-solicitud");
+    texto(msg, "", "ok");
+    const tipo = $("s-tipo").value;
+    const folio = $("s-folio").value;
+    if (!folio) return texto(msg, "No tienes un display activo para pedir cambios.", "err");
+    const cuerpo = { tipo, folio, motivo: $("s-motivo").value.trim(), nota: $("s-nota").value.trim() };
+    if (tipo === "cambiar") {
+      cuerpo.nuevo_negocio = $("s-nuevo").value.trim();
+      cuerpo.url_resena = $("s-url").value.trim();
+      if (!cuerpo.nuevo_negocio) return texto(msg, "Escribe el nombre del nuevo negocio.", "err");
+      if (!/^https:\/\//.test(cuerpo.url_resena)) return texto(msg, "El enlace de reseña debe empezar con https://", "err");
+    }
+    $("btn-solicitar").disabled = true;
+    try {
+      const { status, datos } = await postJSON("/api/vendedor/solicitudes", cuerpo);
+      if (status === 201 && datos && datos.success) {
+        $("form-solicitud").reset();
+        ajustarTipoSolicitud();
+        texto(msg, "Solicitud enviada.", "ok");
+      } else if (status !== 401) {
+        texto(msg, errorDe(datos), "err");
+      }
+    } catch (_) {
+      texto(msg, MSG_ERROR_RED, "err");
+    } finally {
+      $("btn-solicitar").disabled = false;
+    }
+  });
+
+  for (const b of $$("#tabs button")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
+  $("btn-volver-ventas").addEventListener("click", () => mostrarVista("ventas"));
   $("btn-salir").addEventListener("click", cerrarSesion);
   iniciar();
 })();
