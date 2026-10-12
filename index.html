@@ -4075,14 +4075,45 @@ var qrcode = function() {
         st.folio = f;
         pantallaNegocio();
       };
+      // Displays que el vendedor puede vender ahora (libres o en prueba). Se muestran 6; el resto con "Ver todos".
+      const disponibles = displays.filter((x) => x.estado === "libre" || x.estado === "prueba");
+      const LIMITE_VISIBLE = 6;
+      const cuadricula = el("div", { style: "display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0" });
+      const botonFolio = (x) => el("button", { type: "button", clase: "btn s sm", style: "width:auto;flex:none;margin:0;display:inline-flex;align-items:center;gap:8px;font:600 15px/1 var(--fb);letter-spacing:.08em", "aria-label": "Vender el display " + x.folio, on: { click: () => continuar(x.folio) } }, [
+        el("span", { texto: x.folio }),
+        el("span", { style: "font:600 11px/1 var(--fb);letter-spacing:.02em;opacity:.75", texto: x.estado === "prueba" ? "Prueba" : "Libre" }),
+      ]);
+      const pintarCuadricula = (todos) => {
+        const visibles = todos ? disponibles : disponibles.slice(0, LIMITE_VISIBLE);
+        cuadricula.replaceChildren(...visibles.map(botonFolio));
+      };
+      const verTodos = el("button", { type: "button", clase: "helpl quiet", style: "margin:8px 0 0;text-align:left", "aria-expanded": "false", hidden: "" }, []);
+      verTodos.addEventListener("click", () => {
+        const expandido = verTodos.getAttribute("aria-expanded") === "true";
+        verTodos.setAttribute("aria-expanded", String(!expandido));
+        verTodos.textContent = expandido ? "Ver más displays disponibles (" + (disponibles.length - LIMITE_VISIBLE) + ")" : "Ver menos";
+        pintarCuadricula(!expandido);
+      });
+      pintarCuadricula(false);
+      if (disponibles.length > LIMITE_VISIBLE) {
+        verTodos.hidden = false;
+        verTodos.textContent = "Ver más displays disponibles (" + (disponibles.length - LIMITE_VISIBLE) + ")";
+      }
+      const bloqueDisponibles = disponibles.length ? el("div", { style: "margin:14px 0 0" }, [
+        el("span", { clase: "lbl", texto: "Tus displays disponibles" }),
+        cuadricula,
+        verTodos,
+      ]) : el("span");
+
       pintar(
         el("h2", { texto: "Vender un display" }),
-        el("p", { clase: "sub", texto: "Escanea el QR del display o escribe su folio." }),
+        el("p", { clase: "sub", texto: "Escanea el QR del display, toca uno de tus displays disponibles o escribe su folio." }),
         el("button", { type: "button", clase: "btn s qr", on: { click: () => abrirEscaner({
           okTexto: () => "Sigue con la venta de este display.",
           continuar,
           teclear: () => entrada.focus(),
         }) } }, [icono(ICONO_QR), "Escanear el QR del display"]),
+        bloqueDisponibles,
         el("form", { novalidate: "", on: { submit: (e) => { e.preventDefault(); const f = entrada.value.trim().toUpperCase(); if (f.length !== 4) return texto(msg, "El folio tiene 4 caracteres.", "err"); continuar(f); } } }, [
           el("label", { clase: "lbl", texto: "¿Prefieres escribir el folio?", for: "fol-v" }),
           el("div", { clase: "fila" }, [entrada, el("button", { type: "submit", clase: "btn s sm" }, ["Continuar"])]),
