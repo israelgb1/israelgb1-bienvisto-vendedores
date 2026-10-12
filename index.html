@@ -2168,7 +2168,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
   // Activar varios, en pantallas como en el mockup: negocio → displays → cobro → listo.
   // El estado de la venta vive en LOTE; si se pierde (recarga), vuelve a «Varios».
   let LOTE = null;
-  const nuevoLote = (negocio) => ({ negocio, nombre: "", wa: "", mail: "", folios: [], inv: null, ventaId: null, hecho: null });
+  const nuevoLote = (negocio) => ({ negocio, nombre: "", wa: "", mail: "", folios: [], inv: null, ventaId: null, hecho: null, metodo: "efectivo" });
 
   // Mismas reglas que el escaneo y el mockup. enLista: folios ya en el lote o en la lectura en curso.
   function validarLote(f, enLista) {
@@ -2480,35 +2480,58 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     if (!LOTE.folios.length) { ir("#/lote/actual"); return null; }
     const n = LOTE.folios.length;
     const t = totalLote(n);
+    const transfer = LOTE.metodo === "transferencia";
+    // Cuenta de cobro del vendedor, solo si el cobro es por transferencia (mismo flujo que la venta individual).
+    const cuenta = transfer ? await getJSON("/api/vendedor/cuenta-cobro").then((d) => (d && d.vigente) || null).catch(() => null) : null;
     const msg = el("p", { clase: "msg", role: "status" });
     let marcado = false;
-    const txtCasilla = "Confirmo que cobré " + dinero(t.total) + " en efectivo y me comprometo a entregar " + dinero(t.aEntregar) + " a Bien Visto.";
+    const txtCasilla = transfer
+      ? "Confirmo que el pago de " + dinero(t.total) + " ya cayó en mi cuenta y me comprometo a entregar " + dinero(t.aEntregar) + " a Bien Visto."
+      : "Confirmo que cobré " + dinero(t.total) + " en efectivo y me comprometo a entregar " + dinero(t.aEntregar) + " a Bien Visto.";
     const chkBtn = el("button", { type: "button", clase: "chk", role: "checkbox", "aria-checked": "false" }, [el("i", {}, [icono(ICONO_CHECK_COBRO)]), el("span", { texto: txtCasilla })]);
     chkBtn.addEventListener("click", () => {
       marcado = !marcado;
       chkBtn.setAttribute("aria-checked", String(marcado));
       chkBtn.classList.remove("bad");
     });
+    const rastreo = el("input", { id: "rastreo-lote", autocapitalize: "characters", autocomplete: "off", maxlength: "100", placeholder: "Ej. 0123456789", value: LOTE.rastreo || "" });
+    rastreo.addEventListener("input", () => { LOTE.rastreo = rastreo.value; });
+
+    // Datos del cliente: solo se piden si faltan (negocio existente sin cliente cargado).
+    const pedirCliente = !LOTE.nombre.trim() || !LOTE.wa.trim();
+    const nombre = el("input", { value: LOTE.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
+    const wa = el("input", { value: LOTE.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
+    const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
+    nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
+    wa.addEventListener("input", () => { LOTE.wa = wa.value; });
+    mail.addEventListener("input", () => { LOTE.mail = mail.value; });
+
+    const validarCliente = () => errNombreCliente(LOTE.nombre) || errWhatsappCliente(LOTE.wa);
+    // Crea la venta una sola vez (pendiente) para poder compartir el enlace o activar.
+    const crearVentaLote = async () => {
+      if (LOTE.ventaId) return true;
+      const e = validarCliente() || errCorreoCliente(LOTE.mail);
+      if (e) { texto(msg, e, "err"); return false; }
+      const crear = await postJSON("/api/vendedor/ventas", { negocio: LOTE.negocio.nombre, contacto: LOTE.nombre.trim(), whatsapp: LOTE.wa.trim(), correo: LOTE.mail.trim().toLowerCase() || null, metodo: LOTE.metodo, direccion: LOTE.negocio.direccion, folios: LOTE.folios });
+      if (crear.status === 401) return false;
+      if (!(crear.status === 201 && crear.datos && crear.datos.success)) { texto(msg, errorDe(crear.datos), "err"); return false; }
+      LOTE.ventaId = crear.datos.id;
+      return true;
+    };
+
     const boton = el("button", { type: "button", clase: "btn a", style: "margin-top:12px" }, [LOTE.ventaId ? "Reintentar activación" : "Activar " + n + (n === 1 ? " display" : " displays")]);
+    if (transfer && !cuenta) boton.disabled = true;
 
     const activar = async () => {
       texto(msg, "", "ok");
-      const eNombre = errNombreCliente(LOTE.nombre);
-      if (eNombre) return texto(msg, eNombre, "err");
-      const eWa = errWhatsappCliente(LOTE.wa);
-      if (eWa) return texto(msg, eWa, "err");
+      const eCliente = validarCliente();
+      if (eCliente) return texto(msg, eCliente, "err");
       if (!marcado) { chkBtn.classList.add("bad"); return texto(msg, "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(t.aEntregar) + ".", "err"); }
       boton.disabled = true;
       try {
-        if (!LOTE.ventaId) {
-          const eMail = errCorreoCliente(LOTE.mail);
-          if (eMail) return texto(msg, eMail, "err");
-          const crear = await postJSON("/api/vendedor/ventas", { negocio: LOTE.negocio.nombre, contacto: LOTE.nombre.trim(), whatsapp: LOTE.wa.trim(), correo: LOTE.mail.trim().toLowerCase() || null, metodo: "efectivo", direccion: LOTE.negocio.direccion, folios: LOTE.folios });
-          if (crear.status === 401) return;
-          if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(msg, errorDe(crear.datos), "err");
-          LOTE.ventaId = crear.datos.id;
-        }
-        const cobro = await postJSON("/api/vendedor/ventas/" + enc(LOTE.ventaId) + "/cobro", { referencia: "", url_resena: LOTE.negocio.enlace_resena });
+        if (!(await crearVentaLote())) return;
+        const referencia = transfer ? rastreo.value.trim().toUpperCase().replace(/\s/g, "") : "";
+        const cobro = await postJSON("/api/vendedor/ventas/" + enc(LOTE.ventaId) + "/cobro", { referencia, url_resena: LOTE.negocio.enlace_resena });
         if (cobro.status === 401) return;
         if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
           ventasCache = [];
@@ -2526,14 +2549,33 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     };
     boton.addEventListener("click", activar);
 
-    // Los datos del cliente solo se piden si faltan (negocio existente sin cliente cargado).
-    const pedirCliente = !LOTE.nombre.trim() || !LOTE.wa.trim();
-    const nombre = el("input", { value: LOTE.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
-    const wa = el("input", { value: LOTE.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
-    const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
-    nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
-    wa.addEventListener("input", () => { LOTE.wa = wa.value; });
-    mail.addEventListener("input", () => { LOTE.mail = mail.value; });
+    // Enlace de pago para el cliente (solo transferencia).
+    const enlacePago = () => "https://ir.bienvisto.com.mx/pago/" + LOTE.ventaId;
+    const copiar = el("button", { type: "button", clase: "btn s", on: { click: async () => {
+      if (!(await crearVentaLote())) return;
+      try {
+        await navigator.clipboard.writeText(enlacePago());
+        texto(msg, "Enlace copiado. Pégalo en el WhatsApp de tu cliente.", "ok");
+      } catch (_) {
+        texto(msg, "No pudimos copiarlo. Enlace: " + enlacePago(), "err");
+      }
+    } } }, ["Copiar enlace"]);
+    const compartir = el("button", { type: "button", clase: "btn p", on: { click: async () => {
+      if (!(await crearVentaLote())) return;
+      const textoEnlace = "Paga tu display Bien Visto aquí: " + enlacePago();
+      if (!navigator.share) return copiar.click();
+      try {
+        await navigator.share({ title: "Datos para pagar", text: textoEnlace });
+      } catch (err) {
+        if (err && err.name === "AbortError") return;
+        copiar.click();
+      }
+    } } }, ["Compartir datos"]);
+
+    const pedirMetodo = (k) => { if (LOTE.ventaId || LOTE.metodo === k) return; LOTE.metodo = k; render(); };
+    const btnEfectivo = el("button", { type: "button", "aria-pressed": String(!transfer), on: { click: () => pedirMetodo("efectivo") } }, [icono(ICONO_EFECTIVO), "Efectivo"]);
+    const btnTransferencia = el("button", { type: "button", "aria-pressed": String(transfer), on: { click: () => pedirMetodo("transferencia") } }, [icono(ICONO_TRANSFERENCIA), "Transferencia"]);
+    if (LOTE.ventaId) { btnEfectivo.disabled = true; btnTransferencia.disabled = true; }
 
     const formula = t.enPromo
       ? (n % PROMO_N ? (t.enPromo / PROMO_N) + " promo × " + dinero(PROMO_PRECIO) + " + " + (n % PROMO_N) + " × " + dinero(PRECIO_DISPLAY) : (n / PROMO_N) + " × promo de " + dinero(PROMO_PRECIO)) + " · "
@@ -2545,6 +2587,36 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       respuesta.hidden = !abrir;
       pregunta.setAttribute("aria-expanded", String(abrir));
     });
+
+    let zona;
+    if (!transfer) {
+      zona = el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Cuenta los " + dinero(t.total) + " frente al cliente antes de activar." });
+    } else if (!cuenta) {
+      zona = el("div", { clase: "card", role: "alert", style: "border-color:var(--danger)" }, [
+        el("b", { texto: "Aún no cargas tu cuenta" }),
+        el("span", { texto: "Sin ella no puedes cobrar por transferencia." }),
+        el("button", { type: "button", clase: "btn p sm", style: "margin-top:8px", on: { click: () => ir("#/datos-cobro") } }, ["Cargar mi cuenta"]),
+      ]);
+    } else {
+      const clabe = String(cuenta.clabe || "").replace(/^(\d{3})(\d{3})(\d{11})(\d)$/, "$1 $2 $3 $4");
+      zona = el("div", {}, [
+        el("div", { clase: "card" }, [
+          el("span", { clase: "lbl", texto: "Tus datos de cobro" }),
+          el("dl", { clase: "kv", style: "margin:0" }, [
+            el("dt", { texto: "Titular" }), el("dd", { texto: cuenta.titular }),
+            el("dt", { texto: "Banco" }), el("dd", { texto: cuenta.banco }),
+            el("dt", { texto: "CLABE" }), el("dd", { texto: clabe }),
+            el("dt", { texto: "Cuenta" }), el("dd", { texto: cuenta.cuenta }),
+            el("dt", { texto: "Tipo" }), el("dd", { texto: cuenta.tipo }),
+          ]),
+        ]),
+        el("div", { clase: "dos" }, [compartir, copiar]),
+        el("p", { clase: "hint", texto: "Tu cliente abre el enlace y ve estos datos para pagar el monto exacto." }),
+        el("label", { clase: "lbl", for: "rastreo-lote", texto: "Clave de rastreo (opcional)" }),
+        rastreo,
+        el("p", { clase: "hint", texto: "La encuentras en el comprobante del cliente. Puedes activar sin ella, pero antes revisa en tu banco que el dinero ya cayó." }),
+      ]);
+    }
 
     return [
       el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · " + n + (n === 1 ? " display" : " displays") })]),
@@ -2568,11 +2640,8 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         campo("Correo (opcional)", mail),
       ]) : el("span"),
       el("span", { clase: "lbl", texto: "¿Cómo paga el cliente?" }),
-      el("div", { clase: "meth", role: "group", "aria-label": "Forma de pago" }, [
-        el("button", { type: "button", "aria-pressed": "true" }, [icono(ICONO_EFECTIVO), "Efectivo"]),
-        el("button", { type: "button", "aria-pressed": "false", disabled: "", title: "En lotes solo se cobra en efectivo por ahora" }, [icono(ICONO_TRANSFERENCIA), "Transferencia"]),
-      ]),
-      el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Cuenta los " + dinero(t.total) + " frente al cliente antes de activar." }),
+      el("div", { clase: "meth", role: "group", "aria-label": "Forma de pago" }, [btnEfectivo, btnTransferencia]),
+      zona,
       chkBtn,
       boton,
       pregunta,
@@ -2595,7 +2664,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       ])]),
       el("span", { clase: "lbl", texto: "Displays activados" }),
       el("ul", { clase: "lista" }, LOTE.hecho.map((f) => el("li", {}, [el("span", { clase: "folio sm", texto: f })]))),
-      el("button", { type: "button", clase: "btn s", on: { click: () => { LOTE.folios = []; LOTE.ventaId = null; LOTE.hecho = null; ir("#/lote/actual"); } } }, ["Agregar más a este negocio"]),
+      el("button", { type: "button", clase: "btn s", on: { click: () => { LOTE.folios = []; LOTE.ventaId = null; LOTE.hecho = null; LOTE.metodo = "efectivo"; ir("#/lote/actual"); } } }, ["Agregar más a este negocio"]),
       el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { LOTE = null; ir("#/hoy"); } } }, ["Terminar"]),
     ];
   }
