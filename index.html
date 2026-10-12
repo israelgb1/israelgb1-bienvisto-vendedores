@@ -2185,47 +2185,99 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       );
     };
 
+    // Paso 2 · Negocio: búsqueda en Google Maps (Places) o negocios cercanos con la ubicación del navegador.
     const pintarNegocio = () => {
-      const q = el("input", { type: "search", placeholder: "Nombre del negocio", "aria-label": "Buscar negocio", maxlength: "100" });
-      const res = el("div", { clase: "resultados" });
+      let turno = 0;
+      let temporizador = null;
+      const msg = el("p", { clase: "msg err", role: "alert", hidden: "" });
+      const lista = el("ul", { clase: "lista resultados", "aria-live": "polite" });
       const elegido = el("div", {});
+      const avisoLista = (txto) => lista.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: txto })]));
+      const pintarLista = (items) => {
+        lista.replaceChildren(...items.map((r) => el("li", {}, [el("button", { type: "button", clase: "item", on: { click: () => { LOTE.negocio = r; pintarElegido(); } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion || "" })])])));
+      };
       const pintarElegido = () => {
-        if (!LOTE.negocio) { elegido.replaceChildren(); q.hidden = false; return; }
-        q.hidden = true;
-        res.replaceChildren();
+        if (!LOTE.negocio) { elegido.replaceChildren(); buscar.hidden = false; return; }
+        buscar.hidden = true;
+        lista.replaceChildren();
         elegido.replaceChildren(el("div", { clase: "tarjeta" }, [
           el("span", { clase: "lbl", texto: "Negocio" }),
           el("b", { texto: LOTE.negocio.nombre }),
           el("p", { clase: "hint", texto: LOTE.negocio.direccion || "" }),
-          el("button", { type: "button", clase: "btn s sm", on: { click: () => { LOTE.negocio = null; q.value = ""; pintarElegido(); } } }, ["Cambiar negocio"]),
+          el("button", { type: "button", clase: "btn s sm", on: { click: () => { LOTE.negocio = null; buscar.value = ""; pintarElegido(); } } }, ["Cambiar negocio"]),
         ]));
       };
-      let temporizador = null;
-      const buscarAhora = async () => {
-        const t = q.value.trim();
-        if (t.length < 3) return res.replaceChildren();
-        const r = await getJSON("/api/vendedor/buscar-negocio?q=" + enc(t)).catch(() => null);
-        if (!r) return res.replaceChildren(el("p", { clase: "hint", texto: MSG_ERROR_RED }));
-        const items = r.resultados || [];
-        res.replaceChildren(...(items.length
-          ? items.map((x) => el("button", { type: "button", clase: "item", on: { click: () => { LOTE.negocio = x; pintarElegido(); } } }, [el("b", { texto: x.nombre }), el("span", { texto: x.direccion || "" })]))
-          : [el("p", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
+      const buscarNegocio = async (q) => {
+        const mi = ++turno;
+        avisoLista("Buscando…");
+        try {
+          const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q));
+          if (res.status === 401) return sesionCaducada();
+          const datos = await res.json().catch(() => null);
+          if (mi !== turno) return;
+          if (!res.ok) return avisoLista(errorDe(datos));
+          const items = (datos && datos.resultados) || [];
+          if (!items.length) return avisoLista("Sin resultados. Prueba con la colonia o la calle.");
+          pintarLista(items);
+        } catch (_) {
+          if (mi === turno) avisoLista(MSG_ERROR_RED);
+        }
       };
-      q.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(buscarAhora, 350); });
+      const ubicar = async () => {
+        const mi = ++turno;
+        if (!navigator.geolocation) return avisoLista("Tu navegador no permite usar la ubicación. Escribe el nombre del negocio.");
+        avisoLista("Buscando negocios cerca de ti…");
+        try {
+          const pos = await new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }));
+          const res = await fetch("/api/vendedor/buscar-cercanos?lat=" + enc(String(pos.coords.latitude)) + "&lng=" + enc(String(pos.coords.longitude)));
+          if (res.status === 401) return sesionCaducada();
+          const datos = await res.json().catch(() => null);
+          if (mi !== turno) return;
+          if (!res.ok) return avisoLista(res.status === 404 ? "La búsqueda por ubicación todavía no está disponible. Escribe el nombre del negocio." : errorDe(datos));
+          const items = (datos && datos.resultados) || [];
+          if (!items.length) return avisoLista("No encontramos negocios cerca de ti. Escribe el nombre del negocio.");
+          pintarLista(items);
+        } catch (err) {
+          if (mi !== turno) return;
+          avisoLista(err && err.code === 1 ? "Permite el acceso a tu ubicación en el navegador, o escribe el nombre del negocio." : "No pudimos obtener tu ubicación. Escribe el nombre del negocio.");
+        }
+      };
+      const buscar = el("input", { id: "bus-n", placeholder: "Ej. Tacos La Esquina Zapopan", maxlength: "100", autocomplete: "off", "aria-label": "Buscar negocio en Google Maps" });
+      buscar.addEventListener("input", () => {
+        clearTimeout(temporizador);
+        const q = buscar.value.trim();
+        if (q.length < 3) { turno++; lista.replaceChildren(); return; }
+        temporizador = setTimeout(() => buscarNegocio(q), 450);
+      });
+
+      const respuesta = el("p", { clase: "hint", hidden: "", texto: "Escribe la colonia o la calle junto con el nombre, por ejemplo «Tacos La Esquina Patria». Si no sale, el negocio puede no tener ficha en Google Maps." });
+      const preguntaNo = el("button", { type: "button", clase: "helpl quiet", style: "margin:0;text-align:left", "aria-expanded": "false", on: { click: () => {
+        const abrir = respuesta.hidden;
+        respuesta.hidden = !abrir;
+        preguntaNo.setAttribute("aria-expanded", String(abrir));
+      } } }, ["¿No aparece el negocio?"]);
+
       const continuar = () => {
         texto(msg, "", "ok");
         if (!LOTE.negocio) return texto(msg, "Elige el negocio.", "err");
         ir("#/lote/actual");
       };
+
       caja.replaceChildren(
-        el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
-        el("h2", { texto: "¿De qué negocio es?" }),
-        el("p", { clase: "sub", texto: "Busca el negocio de " + LOTE.nombre.trim() + " y confírmalo." }),
-        el("span", { clase: "lbl", texto: "Negocio" }),
-        q,
-        res,
+        el("div", { clase: "row", style: "margin-bottom:6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
+        el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Primero el cliente y su negocio; después tocas los displays." }),
+        el("div", { clase: "steps", "aria-hidden": "true" }, [el("i", { clase: "on" }), el("i", { clase: "on" }), el("i"), el("i")]),
+        el("h2", { texto: "¿Cuál es su negocio?" }),
+        el("p", { clase: "sub", texto: "Escribe el nombre como aparece en Google Maps. Primero demuestras que funciona; los datos del cliente vienen después." }),
+        el("label", { clase: "lbl", for: "bus-n", texto: "Buscar en Google Maps" }),
+        buscar,
+        el("button", { type: "button", clase: "btn s sm", style: "margin:12px 0", on: { click: ubicar } }, ["Usar mi ubicación: negocios cerca de mí"]),
         elegido,
-        el("button", { type: "button", clase: "btn a", on: { click: continuar } }, ["Siguiente: agregar displays"]),
+        lista,
+        el("hr", { style: "border:0;border-top:1px solid var(--borde);margin:14px 0" }),
+        preguntaNo,
+        respuesta,
+        el("button", { type: "button", clase: "btn p", style: "margin-top:16px", on: { click: continuar } }, ["Siguiente: agregar displays"]),
         el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => { LOTE.negocio = null; pintarCliente(); } } }, ["Atrás"]),
         msg,
       );
