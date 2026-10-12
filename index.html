@@ -505,8 +505,103 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
 
   const PANTALLAS = {
     hoy: pHoy, vender: pVender, prueba: pPrueba, escanear: pEscanear, lote: pLote, bloqueo: pBloqueo, desempeno: pDesempeno, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
-    ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, p: pProximamente,
+    ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, "datos-cobro": pDatosCobro, p: pProximamente,
   };
+
+  // Cuenta de cobro del vendedor: mismas reglas que el Worker (catálogo de bancos del mockup).
+  const BANCOS_CLABE = {'002':'Banamex','006':'Bancomext','009':'Banobras','012':'BBVA','014':'Santander','019':'Banjército','021':'HSBC','030':'BanBajío','032':'IXE','036':'Inbursa','037':'Interacciones','042':'Mifel','044':'Scotiabank','058':'Banregio','059':'Invex','060':'Bansí','062':'Afirme','072':'Banorte','103':'American Express','106':'Bank of America','108':'MUFG','110':'JP Morgan','112':'BMonex','113':'Ve por Más','127':'Azteca','130':'Compartamos','131':'Famsa','132':'Multiva','133':'Actinver','135':'Nafin','136':'Inter Banco','137':'BanCoppel','138':'ABC Capital','140':'Consubanco','143':'CIBanco','145':'BBase','147':'Bankaool','148':'PagaTodo','152':'Bancrea','154':'Covalto','155':'ICBC','156':'Sabadell','157':'Shinhan','158':'Mizuho','159':'Bank of China','160':'Banco S3','166':'Banco del Bienestar','168':'Hipotecaria Federal','638':'Nu México','646':'STP','722':'Mercado Pago','728':'Spin by OXXO'};
+  const TIPOS_CUENTA = ["Débito", "Nómina", "Ahorro", "Cheques"];
+  const bancoDeClabe = (c) => BANCOS_CLABE[String(c).slice(0, 3)] || "";
+  const digitoClabe = (c) => { const w = [3, 7, 1]; let t = 0; for (let i = 0; i < 17; i++) t += (Number(c[i]) * w[i % 3]) % 10; return (10 - (t % 10)) % 10; };
+  const errorClabe = (v) => {
+    const d = v.replace(/[\s-]/g, "");
+    if (!d) return "Escribe tu CLABE interbancaria. Son 18 dígitos y la ves en tu app del banco.";
+    if (/\D/.test(d)) return "La CLABE solo lleva números. Quita letras y símbolos.";
+    if (d.length !== 18) return "La CLABE son 18 dígitos: lleva " + d.length + ".";
+    if (!BANCOS_CLABE[d.slice(0, 3)]) return "Los primeros 3 dígitos no son de un banco que reconozcamos.";
+    if (digitoClabe(d) !== Number(d[17])) return "El último dígito no coincide: hay un error de dedo en la CLABE. Compárala con tu app del banco.";
+    return "";
+  };
+  const errorCuenta = (v) => {
+    const d = v.replace(/\s/g, "");
+    if (!d) return "Escribe el número de cuenta.";
+    if (/\D/.test(d)) return "El número de cuenta solo lleva números.";
+    if (d.length < 8 || d.length > 11) return "Debe tener entre 8 y 11 dígitos: lleva " + d.length + ".";
+    return "";
+  };
+  const errorTitular = (v) => (v.trim().length < 5 ? "Escribe el nombre del titular, tal como aparece en tu banco." : "");
+
+  // Mis datos de cobro: la cuenta a la que el cliente paga por transferencia.
+  async function pDatosCobro() {
+    const d = await getJSON("/api/vendedor/cuenta-cobro");
+    if (!d) return null;
+    const vig = d.vigente || null;
+    const pend = d.pendiente || null;
+    const c = vig || { titular: "", clabe: "", cuenta: "", tipo: "Débito" };
+    const msg = el("p", { clase: "msg", role: "status" });
+    const ct = el("input", { id: "ct", autocomplete: "off", value: c.titular, placeholder: "Como aparece en tu banco" });
+    const cc = el("input", { id: "cc", inputmode: "numeric", autocomplete: "off", maxlength: "22", value: c.clabe ? formatoClabe(c.clabe) : "", placeholder: "18 dígitos" });
+    const cn = el("input", { id: "cn", inputmode: "numeric", autocomplete: "off", maxlength: "11", value: c.cuenta, placeholder: "Número de cuenta" });
+    const cp = el("select", { id: "cp" }, TIPOS_CUENTA.map((t) => el("option", Object.assign({ value: t, texto: t }, t === c.tipo ? { selected: "" } : {}))));
+    const pistaBanco = (dig) => (bancoDeClabe(dig) ? "Banco: " + bancoDeClabe(dig) : "El banco se detecta con los primeros 3 dígitos.");
+    const bancoHint = el("p", { clase: "hint", style: "margin:4px 0 0", texto: pistaBanco(c.clabe || "") });
+    cc.addEventListener("input", () => {
+      const dig = cc.value.replace(/\D/g, "").slice(0, 18);
+      cc.value = dig.replace(/^(\d{3})(\d{0,3})(\d{0,11})(\d{0,1})$/, (m, a, b2, c2, d2) => [a, b2, c2, d2].filter(Boolean).join(" "));
+      bancoHint.textContent = pistaBanco(dig);
+    });
+    cn.addEventListener("input", () => { cn.value = cn.value.replace(/\D/g, "").slice(0, 11); });
+
+    const guardar = el("button", { type: "button", clase: "btn p", style: "margin-top:12px", on: { click: async () => {
+      const titular = ct.value.trim().replace(/\s+/g, " ");
+      const clabe = cc.value.replace(/\s/g, "");
+      const cuenta = cn.value.replace(/\s/g, "");
+      const error = errorTitular(titular) || errorClabe(clabe) || errorCuenta(cuenta);
+      if (error) return texto(msg, error, "err");
+      guardar.disabled = true;
+      try {
+        const { status, datos } = await postJSON("/api/vendedor/cuenta-cobro", { titular, clabe, cuenta, tipo: cp.value });
+        if (status === 401) return;
+        if (status === 201 && datos && datos.success) {
+          aviso = datos.estado === "vigente" ? "Datos de cobro guardados." : "Solicitud enviada. Sigue vigente tu cuenta actual hasta que Bien Visto la apruebe.";
+          return render();
+        }
+        texto(msg, errorDe(datos), "err");
+      } catch (_) {
+        texto(msg, MSG_ERROR_RED, "err");
+      } finally {
+        guardar.disabled = false;
+      }
+    } } }, [vig ? "Enviar cambio a revisión" : "Guardar mis datos"]);
+
+    const cancelar = pend ? el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: async () => {
+      const { status, datos } = await postJSON("/api/vendedor/cuenta-cobro/cancelar", {});
+      if (status === 401) return;
+      if (status === 200 && datos && datos.success) {
+        aviso = "Solicitud cancelada. Sigue vigente tu cuenta actual.";
+        return render();
+      }
+      texto(msg, errorDe(datos), "err");
+    } } }, ["Cancelar la solicitud"]) : null;
+
+    return conAviso([
+      el("h2", { texto: "Mis datos de cobro" }),
+      el("p", { clase: "sub", texto: "Los ve tu cliente cuando paga por transferencia. Usa una cuenta a tu nombre." }),
+      ...(pend ? [el("div", { clase: "tarjeta", role: "status" }, [
+        el("span", { clase: "lbl", texto: "Cambio en revisión" }),
+        el("p", { clase: "hint", style: "margin:0", texto: "Pediste cambiar a " + (pend.banco || "otro banco") + " · CLABE ···· " + pend.clabe.slice(-4) + ". Mientras Bien Visto lo aprueba, tus clientes siguen viendo tu cuenta actual." }),
+        cancelar,
+      ])] : []),
+      el("div", { clase: "campo" }, [el("label", { clase: "lbl", for: "ct", texto: "Titular de la cuenta" }), ct]),
+      el("div", { clase: "campo" }, [el("label", { clase: "lbl", for: "cc", texto: "CLABE (18 dígitos)" }), cc, bancoHint]),
+      el("div", { clase: "campo" }, [el("label", { clase: "lbl", for: "cn", texto: "Número de cuenta" }), cn]),
+      el("div", { clase: "campo" }, [el("label", { clase: "lbl", for: "cp", texto: "Tipo de cuenta" }), cp]),
+      el("p", { clase: "hint", texto: "Revisa bien la CLABE: si tiene un error, el dinero de tu cliente puede llegar a otra persona." + (vig ? " Cambiar tu cuenta requiere la aprobación de Bien Visto, para proteger tu dinero." : "") + " Tus datos bancarios solo los ven Bien Visto y el cliente al que se los mandas." }),
+      msg,
+      guardar,
+      el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => ir("#/cuenta") } }, ["Cancelar"]),
+    ]);
+  }
   const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", escanear: "hoy", bloqueo: "saldo", desempeno: "varios", displays: "displays", d: "displays", saldo: "saldo" };
 
   async function render() {
@@ -2052,6 +2147,8 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     datos.push(el("dt", { texto: "Acceso" }), el("dd", { texto: "Con código a tu correo" }));
     const alta = yo.fecha_registro ? new Date(String(yo.fecha_registro).replace(" ", "T") + "Z") : null;
     const altaTxt = alta && !isNaN(alta) ? alta.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : "";
+    const cobroD = await getJSON("/api/vendedor/cuenta-cobro").catch(() => null);
+    const cuentaVig = cobroD && cobroD.vigente;
     return [
       el("h2", { texto: "Mi cuenta" }),
       el("p", { clase: "sub", texto: "Tus datos como vendedor de Bien Visto." }),
@@ -2065,7 +2162,8 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       ]),
       el("div", { clase: "tarjeta" }, [
         el("span", { clase: "lbl", texto: "Mis datos de cobro" }),
-        el("p", { clase: "hint", texto: "Llegan cuando se activen los pagos por transferencia." }),
+        el("p", { clase: "hint", texto: cuentaVig ? cuentaVig.banco + " · CLABE ···· " + cuentaVig.clabe.slice(-4) : "Aún no cargas tu cuenta. Sin ella no puedes cobrar por transferencia." }),
+        el("button", { type: "button", clase: "btn s sm", on: { click: () => ir("#/datos-cobro") } }, [cuentaVig ? "Ver o cambiar mis datos" : "Cargar mi cuenta"]),
       ]),
       el("div", { clase: "tarjeta" }, [
         el("span", { clase: "lbl", texto: "Mi actividad" }),
