@@ -133,6 +133,9 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 .barra{height:10px;border-radius:999px;background:var(--menta);overflow:hidden;margin:6px 0 10px}
 .barra i{display:block;height:100%;background:var(--verde);border-radius:999px}
 a.btn{text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center}
+.seg{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;padding:2px 0 4px}
+.seg button{width:auto;min-height:40px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid var(--borde);font:600 14px/1 var(--fb);color:var(--tinta);white-space:nowrap;flex:none}
+.seg button[aria-pressed="true"]{background:var(--verde);color:var(--crema);border-color:var(--verde)}
 .resultados{max-height:260px;overflow-y:auto;margin:4px 0 12px;padding:2px 2px 0 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 
 .drawer-in{background:var(--crema);width:88%;max-width:340px;height:100%;padding:16px 14px 20px;overflow-y:auto}
@@ -547,14 +550,32 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     return conAviso(nodos);
   }
 
+  // Filtro y búsqueda de Mis displays: se recuerdan mientras la app está abierta.
+  let filtroDisplays = "todos";
+  let busquedaDisplays = "";
+
   async function pDisplays() {
     const d = await getJSON("/api/vendedor/displays");
     if (!d) return null;
     const lista = d.displays || [];
+    if (!lista.length) return conAviso([el("h2", { texto: "Mis displays" }), el("p", { clase: "hint", texto: "Aún no tienes displays asignados." })]);
+
+    const ESTADOS_FILTRO = [["todos", "Todos"], ["activo", "Activos"], ["prueba", "En prueba"], ["libre", "Libres"], ["retirado", "Retirados"]];
+    const cuenta = (e) => (e === "todos" ? lista.length : lista.filter((x) => x.estado === e).length);
     const ul = el("ul", { clase: "lista" });
-    const pintar = (filtro) => {
-      const f = (filtro || "").toUpperCase();
-      ul.replaceChildren(...lista.filter((x) => !f || x.folio.includes(f)).map((x) =>
+    const botones = new Map();
+    const resumen = el("p", { clase: "sub" });
+    const buscar = el("input", { type: "search", placeholder: "Buscar por folio o negocio", "aria-label": "Buscar displays", value: busquedaDisplays });
+
+    const pintar = () => {
+      const q = busquedaDisplays.trim().toLowerCase();
+      const visibles = lista.filter((x) =>
+        (filtroDisplays === "todos" || x.estado === filtroDisplays) &&
+        (!q || x.folio.toLowerCase().includes(q) || (x.negocio_asignado || "").toLowerCase().includes(q) || (x.direccion || "").toLowerCase().includes(q))
+      );
+      for (const [e, b] of botones) b.setAttribute("aria-pressed", String(e === filtroDisplays));
+      resumen.textContent = lista.length + (lista.length === 1 ? " display" : " displays") + " en total · busca por folio o negocio.";
+      ul.replaceChildren(...visibles.map((x) =>
         el("li", {}, [
           el("button", { type: "button", clase: "item", on: { click: () => ir("#/d/" + enc(x.folio)) } }, [
             el("div", { clase: "fila" }, [el("span", { clase: "folio sm", texto: x.folio }), chip(x.estado)]),
@@ -562,11 +583,17 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
           ]),
         ])
       ));
+      if (!visibles.length) ul.replaceChildren(el("li", { clase: "hint", texto: "Ningún display coincide con la búsqueda o el filtro." }));
     };
-    pintar("");
-    const buscar = el("input", { placeholder: "Buscar por folio", "aria-label": "Buscar por folio", on: { input: () => pintar(buscar.value.trim()) } });
-    if (!lista.length) return conAviso([el("h2", { texto: "Mis displays" }), el("p", { clase: "hint", texto: "Aún no tienes displays asignados." })]);
-    return conAviso([el("h2", { texto: "Mis displays" }), buscar, ul]);
+
+    buscar.addEventListener("input", () => { busquedaDisplays = buscar.value; pintar(); });
+    const seg = el("div", { clase: "seg", role: "group", "aria-label": "Filtrar por estado" }, ESTADOS_FILTRO.map(([e, txt]) => {
+      const b = el("button", { type: "button", on: { click: () => { filtroDisplays = e; pintar(); } } }, [txt + " " + cuenta(e)]);
+      botones.set(e, b);
+      return b;
+    }));
+    pintar();
+    return conAviso([el("h2", { texto: "Displays" }), resumen, el("div", { clase: "campo" }, [buscar]), seg, ul]);
   }
 
   const ETIQUETA_TRANSICION = {
