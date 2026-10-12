@@ -121,6 +121,11 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 .kv dt{color:var(--muted)}
 .kv dd{margin:0;font-weight:600;word-break:break-word}
 .grande{font:600 40px/1 var(--fd);display:block;margin:6px 0;color:var(--tinta)}
+.escaneos-dia{display:flex;align-items:flex-end;gap:8px;height:96px;margin:12px 0 8px}
+.escaneos-dia > div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;min-width:0}
+.escaneos-dia .b{background:var(--verde);border-radius:6px 6px 2px 2px}
+.escaneos-dia .b.vacio{background:var(--borde)}
+.escaneos-dia .d{font-size:12px;color:var(--muted);text-align:center;margin-top:4px;line-height:1}
 .opcion{display:flex;gap:10px;align-items:center;font-size:16px;margin:0 0 10px}
 .opcion input{width:auto;min-height:0;margin:0}
 .res{border:1px solid var(--borde);border-radius:12px;overflow:hidden;background:#fff;margin-top:8px}
@@ -763,7 +768,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const solicitud = sols && (sols.solicitudes || []).find((x) => x.folio === folio && x.estado === "pendiente")
       || sols && (sols.solicitudes || []).find((x) => x.folio === folio && x.estado === "rechazada")
       || null;
-    return { solicitud, historial: hist ? hist.estados || [] : [] };
+    return { solicitud, historial: hist ? hist.estados || [] : [], escaneosDia: hist && Array.isArray(hist.escaneos_por_dia) ? hist.escaneos_por_dia : [] };
   }
 
   async function pDetalle([folio]) {
@@ -855,9 +860,19 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
 
     if (f.estado === "activo" || f.estado === "retirado") {
       const n = Number(f.escaneos_7d) || 0;
+      const dias = extra.escaneosDia;
+      const max = dias.reduce((a, d) => Math.max(a, d.n), 0);
+      const LETRAS = ["D", "L", "M", "X", "J", "V", "S"];
+      const grafica = dias.length === 7 ? el("div", { clase: "escaneos-dia", "aria-label": "Escaneos por día" }, dias.map((d) =>
+        el("div", {}, [
+          el("div", { clase: d.n ? "b" : "b vacio", style: "height:" + (max && d.n ? Math.max(6, Math.round((d.n / max) * 100)) : 4) + "%" }),
+          el("div", { clase: "d", texto: LETRAS[new Date(d.dia + "T12:00:00Z").getUTCDay()] }),
+        ])
+      )) : null;
       bloques.push(el("div", { clase: "tarjeta" }, [
         el("span", { clase: "lbl", texto: "Escaneos, últimos 7 días" }),
         el("div", { clase: "grande", texto: String(n) }),
+        ...(grafica ? [grafica] : []),
         el("p", { clase: "hint", style: "margin:0", texto: n + " en total · el reporte mensual separa NFC y QR" }),
       ]));
     }
