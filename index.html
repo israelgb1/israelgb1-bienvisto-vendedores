@@ -132,6 +132,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 .msg{margin:6px 0 0}
 .barra{height:10px;border-radius:999px;background:var(--menta);overflow:hidden;margin:6px 0 10px}
 .barra i{display:block;height:100%;background:var(--verde);border-radius:999px}
+a.btn{text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center}
 .resultados{max-height:260px;overflow-y:auto;margin:4px 0 12px;padding:2px 2px 0 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 
 .drawer-in{background:var(--crema);width:88%;max-width:340px;height:100%;padding:16px 14px 20px;overflow-y:auto}
@@ -568,20 +569,49 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
     return conAviso([el("h2", { texto: "Mis displays" }), buscar, ul]);
   }
 
+  const ETIQUETA_TRANSICION = {
+    "libre>activo": "Activado con un negocio",
+    "activo>libre": "Liberado para otro negocio",
+    "libre>prueba": "Prueba iniciada",
+    "prueba>activo": "Cobrado y activado",
+    "prueba>libre": "Prueba terminada",
+    "activo>retirado": "Retirado de servicio",
+  };
+
+  // Datos secundarios del detalle: si fallan, la pantalla sigue con lo principal.
+  async function datosDetalle(folio) {
+    const [sols, hist] = await Promise.all([
+      getJSON("/api/vendedor/solicitudes").catch(() => null),
+      getJSON("/api/vendedor/displays/" + enc(folio) + "/historial").catch(() => null),
+    ]);
+    const solicitud = sols && (sols.solicitudes || []).find((x) => x.folio === folio && x.estado === "pendiente")
+      || sols && (sols.solicitudes || []).find((x) => x.folio === folio && x.estado === "rechazada")
+      || null;
+    return { solicitud, historial: hist ? hist.estados || [] : [] };
+  }
+
   async function pDetalle([folio]) {
     const d = await getJSON("/api/vendedor/displays");
     if (!d) return null;
     const f = (d.displays || []).find((x) => x.folio === folio);
     if (!f) return [el("p", { clase: "msg err", texto: "No encontramos ese display." })];
+    const extra = await datosDetalle(f.folio);
     const botones = [];
+    const msg = el("p", { clase: "msg", role: "status" });
+
     if (f.estado === "activo") {
-      botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/reponer") } }, ["Pedir reposición"]));
-      botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/cambiar") } }, ["Cambiar de negocio"]));
+      if (f.url_destino) {
+        botones.push(el("a", { clase: "btn p", href: f.url_destino, target: "_blank", rel: "noopener" }, ["Probar enlace de reseña"]));
+      }
+      const pendiente = extra.solicitud && extra.solicitud.estado === "pendiente";
+      if (!pendiente) {
+        botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/reponer") } }, ["Pedir reposición"]));
+        botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/cambiar") } }, ["Cambiar de negocio"]));
+      }
     }
     if (f.estado === "libre") {
       botones.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/vender/" + enc(f.folio)) } }, ["Activar display"]));
     }
-    const msg = el("p", { clase: "msg", role: "status" });
     if (f.estado === "prueba") {
       botones.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/vender/" + enc(f.folio)) } }, ["Cobrar y activar"]));
       const terminar = el("button", { type: "button", clase: "btn s" }, ["Terminar prueba"]);
@@ -603,19 +633,56 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
       });
       botones.push(terminar);
     }
-    return [
+
+    const bloques = [
       el("div", { clase: "tarjeta centro" }, [
         el("span", { clase: "lbl", texto: "Display" }),
         el("div", { clase: "folio", texto: f.folio }),
         el("div", { clase: "fila" }, [chip(f.estado)]),
       ]),
-      el("dl", { clase: "kv" }, [
-        el("dt", { texto: "Negocio" }), el("dd", { texto: f.negocio_asignado || "—" }),
-        ...(f.prueba_min_restantes != null ? [el("dt", { texto: "Prueba" }), el("dd", { texto: "Quedan " + f.prueba_min_restantes + " min" })] : []),
-      ]),
-      ...botones,
-      msg,
     ];
+
+    if (extra.solicitud) {
+      const s2 = extra.solicitud;
+      const tipoTxt = s2.tipo === "cambiar" ? "Cambio de negocio" : "Reposición";
+      bloques.push(el("div", { clase: "tarjeta", role: "status", style: s2.estado === "rechazada" ? "border-color:var(--danger)" : "" }, [
+        el("span", { clase: "lbl", texto: s2.estado === "pendiente" ? "Solicitud en revisión" : "Solicitud rechazada" }),
+        el("b", { texto: tipoTxt }),
+        s2.estado === "rechazada" && s2.motivo_rechazo ? el("p", { clase: "hint", texto: s2.motivo_rechazo }) : el("p", { clase: "hint", texto: "Bien Visto la revisa y te avisa." }),
+      ]));
+    }
+
+    bloques.push(el("dl", { clase: "kv" }, [
+      el("dt", { texto: "Negocio" }), el("dd", { texto: f.negocio_asignado || "Sin asignar" }),
+      ...(f.direccion ? [el("dt", { texto: "Dirección" }), el("dd", { texto: f.direccion })] : []),
+      el("dt", { texto: "Enlace" }), el("dd", { texto: "ir.bienvisto.com.mx/" + f.folio.toLowerCase() }),
+      ...(f.prueba_min_restantes != null ? [el("dt", { texto: "Prueba" }), el("dd", { texto: "Quedan " + f.prueba_min_restantes + " min" })] : []),
+    ]));
+
+    if (f.estado === "activo" || f.estado === "retirado") {
+      const n = Number(f.escaneos_7d) || 0;
+      bloques.push(el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Escaneos, últimos 7 días" }),
+        el("b", { texto: String(n) }),
+        el("p", { clase: "hint", texto: n === 1 ? "1 escaneo" : n + " escaneos" }),
+      ]));
+    }
+
+    if (f.estado === "retirado") {
+      bloques.push(el("div", { clase: "aviso alerta", texto: "Este display está retirado. Quien lo escanee verá un botón al negocio en Google Maps. Si crees que fue un error, escribe a Bien Visto." }));
+    }
+
+    bloques.push(...botones, msg);
+
+    if (extra.historial.length) {
+      const items = extra.historial.slice(0, 20).map((h) => {
+        const clave = h.estado_anterior + ">" + h.estado_nuevo;
+        const etiqueta = ETIQUETA_TRANSICION[clave] || ("Estado: " + (ESTADOS[h.estado_anterior] || [h.estado_anterior])[0] + " → " + (ESTADOS[h.estado_nuevo] || [h.estado_nuevo])[0]);
+        return el("li", {}, [el("b", { texto: etiqueta }), el("span", { clase: "hint", texto: " · " + h.fecha.slice(0, 16).replace("T", " ") })]);
+      });
+      bloques.push(el("h3", { texto: "Historial" }), el("ul", { clase: "lista" }, items));
+    }
+    return bloques;
   }
 
   async function pSolicitar([folio, tipo]) {
@@ -1175,7 +1242,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
         activar.disabled = true;
         try {
           if (!st.ventaId) {
-            const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, metodo: "efectivo", folios: [st.folio] });
+            const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, metodo: "efectivo", direccion: st.negocio.direccion, folios: [st.folio] });
             if (crear.status === 401) return;
             if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(avisoGlobal, errorDe(crear.datos), "err");
             st.ventaId = crear.datos.id;
