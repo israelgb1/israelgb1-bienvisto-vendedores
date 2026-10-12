@@ -4233,12 +4233,12 @@ var qrcode = function() {
         el("label", { clase: "lbl", texto: "Buscar en Google Maps", for: "bus-n" }),
         (buscar.id = "bus-n", buscar),
         el("button", { type: "button", clase: "btn s sm", style: "margin:12px 0 12px", on: { click: ubicar } }, ["Usar mi ubicación: negocios cerca de mí"]),
+        resultados,
         el("button", { type: "button", clase: "clb", style: "margin-top:0", on: { click: () => pantallaCliente() } }, [
           el("span", { clase: "ic", "aria-hidden": "true" }, [icono('<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 5.2a3.4 3.4 0 0 1 0 6.4M18 14.4c2 .7 3.5 2.6 3.5 5.6"/></svg>')]),
           el("span", {}, [el("b", { texto: "¿Ya es cliente?" }), el("span", { clase: "s", texto: "Búscalo por su nombre y elige su negocio" })]),
           icono('<svg class="ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>'),
         ]),
-        resultados,
         ...preguntaDesplegable("¿No aparece el negocio?", "Escribe la colonia o la calle junto con el nombre, por ejemplo «Tacos La Esquina Patria». Si no sale, el negocio puede no tener ficha en Google Maps."),
       ];
       pintar(...nodos);
