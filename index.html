@@ -130,6 +130,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 .drawer nav a:hover,.drawer nav a:focus-visible{background:var(--menta)}
 .drawer .btn{margin-top:12px}
 .msg{margin:6px 0 0}
+.resultados{max-height:260px;overflow-y:auto;margin:4px 0 12px;padding:2px 2px 0 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 </style>
 </head>
 <body>
@@ -756,7 +757,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
     let ventaPendiente = null;
     let turnoBusqueda = 0;
     let temporizador = null;
-    const resultados = el("ul", { clase: "lista" });
+    const resultados = el("ul", { clase: "lista resultados" });
     const elegido = el("div", { clase: "tarjeta", hidden: "" });
     const buscar = el("input", { placeholder: "Ej. Taquería Lupita Zapopan", maxlength: "100", autocomplete: "off", "aria-label": "Buscar negocio" });
 
