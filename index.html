@@ -674,6 +674,29 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
         el("dt", { texto: "Displays" }), el("dd", { texto: String(v.displays || 0) }),
       ]),
     ];
+    if (["cobrada", "entregada"].includes(v.estado)) {
+      const enlaceFactura = "https://bienvisto.com.mx/factura";
+      const msgFac = el("p", { clase: "msg", role: "status" });
+      const copiar = el("button", { type: "button", clase: "btn s" }, ["Copiar enlace"]);
+      copiar.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(enlaceFactura);
+          texto(msgFac, "Enlace copiado.", "ok");
+        } catch (_) {
+          texto(msgFac, "No pudimos copiarlo. Selecciónalo y cópialo a mano.", "err");
+        }
+      });
+      const textoWa = "Para tu factura de Bien Visto entra a " + enlaceFactura + " y pon esta referencia: " + v.id;
+      const wa = el("a", { clase: "btn s", href: "https://wa.me/?text=" + enc(textoWa), target: "_blank", rel: "noopener" }, ["Enviar por WhatsApp"]);
+      nodos.push(el("div", { clase: "card" }, [
+        el("span", { clase: "lbl", texto: "Factura" }),
+        el("p", { clase: "hint", texto: "Si tu cliente la necesita, compártele este enlace. Debe poner la referencia " + v.id + " en el formulario." }),
+        el("b", { texto: enlaceFactura }),
+        copiar,
+        wa,
+        msgFac,
+      ]));
+    }
     if (v.estado === "pendiente") {
       const ref = el("input", { maxlength: "100" });
       const boton = el("button", { type: "button", clase: "btn p" }, ["Enviar a revisión"]);
@@ -930,7 +953,7 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
       el("div", { clase: "lista" }, [
         el("div", { clase: "campo" }, [menuItem("Mis ventas", "#/ventas")]),
         el("div", { clase: "campo" }, [menuItem("Mi cuenta", "#/cuenta")]),
-        el("div", { clase: "campo" }, [menuItem("Activación en lote", "#/p/" + enc("Activación en lote"))]),
+        el("div", { clase: "campo" }, [menuItem("Vender varios displays", "#/vender")]),
         el("div", { clase: "campo" }, [menuItem("Mis datos de cobro", "#/p/" + enc("Mis datos de cobro"))]),
         el("a", { clase: "item", href: WA_AYUDA, target: "_blank", rel: "noopener" }, [el("b", { texto: "Hablar con soporte" }), el("span", { texto: "WhatsApp de Bien Visto" })]),
       ]),
