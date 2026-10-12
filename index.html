@@ -785,6 +785,27 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/reponer") } }, ["Solicitar reposición"]));
       }
     }
+    // La venta que activó este display: el servidor valida que aún se pueda anular.
+    if (f.venta_id && ["pendiente", "rev", "cobrada"].includes(f.venta_estado)) {
+      const anular = el("button", { type: "button", clase: "helpl quiet" }, ["Solicitar anulación de la venta"]);
+      anular.addEventListener("click", async () => {
+        anular.disabled = true;
+        try {
+          const { status, datos } = await postJSON("/api/vendedor/solicitudes", { tipo: "anular", venta_id: f.venta_id });
+          if (status === 201 && datos && datos.success) {
+            aviso = "Solicitud de anulación enviada.";
+            render();
+          } else if (status !== 401) {
+            texto(msg, errorDe(datos), "err");
+          }
+        } catch (_) {
+          texto(msg, MSG_ERROR_RED, "err");
+        } finally {
+          anular.disabled = false;
+        }
+      });
+      botones.push(anular);
+    }
     if (f.estado === "libre") {
       botones.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/vender/" + enc(f.folio)) } }, ["Activar display"]));
     }
