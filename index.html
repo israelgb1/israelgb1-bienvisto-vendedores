@@ -1394,7 +1394,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
         activar.disabled = true;
         try {
           if (!st.ventaId) {
-            const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, metodo: "efectivo", direccion: st.negocio.direccion, folios: [st.folio] });
+            const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, correo: st.form.mail || null, metodo: "efectivo", direccion: st.negocio.direccion, folios: [st.folio] });
             if (crear.status === 401) return;
             if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(avisoGlobal, errorDe(crear.datos), "err");
             st.ventaId = crear.datos.id;
@@ -1472,7 +1472,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     const d = await getJSON("/api/vendedor/displays");
     if (!d) return null;
     const libres = new Set((d.displays || []).filter((x) => x.estado === "libre").map((x) => x.folio));
-    const L = { negocio: null, nombre: "", wa: "", folios: [], ventaId: null, hecho: null };
+    const L = { negocio: null, nombre: "", wa: "", mail: "", folios: [], ventaId: null, hecho: null };
     const msg = el("p", { clase: "msg", role: "status" });
     const raiz = el("div", {});
     const cajaNegocio = el("div", {});
@@ -1511,7 +1511,9 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
         boton.disabled = true;
         try {
           if (!L.ventaId) {
-            const crear = await postJSON("/api/vendedor/ventas", { negocio: L.negocio.nombre, contacto: L.nombre.trim(), whatsapp: L.wa.trim(), metodo: "efectivo", direccion: L.negocio.direccion, folios: L.folios });
+            const eMail = errCorreoCliente(L.mail);
+        if (eMail) return texto(msg, eMail, "err");
+        const crear = await postJSON("/api/vendedor/ventas", { negocio: L.negocio.nombre, contacto: L.nombre.trim(), whatsapp: L.wa.trim(), correo: L.mail.trim().toLowerCase() || null, metodo: "efectivo", direccion: L.negocio.direccion, folios: L.folios });
             if (crear.status === 401) return;
             if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(msg, errorDe(crear.datos), "err");
             L.ventaId = crear.datos.id;
@@ -1584,9 +1586,11 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     const renderCliente = () => {
       const nombre = el("input", { value: L.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
       const wa = el("input", { value: L.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
+      const mail = el("input", { value: L.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
       nombre.addEventListener("input", () => { L.nombre = nombre.value; });
       wa.addEventListener("input", () => { L.wa = wa.value; });
-      cajaCliente.replaceChildren(el("span", { clase: "lbl", texto: "2 · Cliente" }), campo("Nombre de quien recibe", nombre), campo("WhatsApp", wa));
+      mail.addEventListener("input", () => { L.mail = mail.value; });
+      cajaCliente.replaceChildren(el("span", { clase: "lbl", texto: "2 · Cliente" }), campo("Nombre de quien recibe", nombre), campo("WhatsApp", wa), campo("Correo (opcional)", mail));
     };
 
     const renderDisplays = () => {
