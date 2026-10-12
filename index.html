@@ -429,10 +429,10 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
   }
 
   const PANTALLAS = {
-    hoy: pHoy, vender: pVender, prueba: pPrueba, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
+    hoy: pHoy, vender: pVender, prueba: pPrueba, escanear: pEscanear, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
     ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, p: pProximamente,
   };
-  const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
+  const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", escanear: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
 
   async function render() {
     if (!enPanel) return;
@@ -466,6 +466,48 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
     render();
   }
 
+  // Ruta según el estado del display: libre → vender; en prueba → pantalla de prueba; si no → detalle.
+  const rutaParaDisplay = (x) => {
+    if (x.estado === "libre") return "#/vender/" + enc(x.folio);
+    if (x.estado === "prueba") return "#/prueba/" + enc(x.folio);
+    return "#/d/" + enc(x.folio);
+  };
+
+  // Escaneo desde Inicio: la cámara solo se abre al tocar el botón.
+  async function pEscanear() {
+    const d = await getJSON("/api/vendedor/displays");
+    if (!d) return null;
+    const displays = d.displays || [];
+    const msg = el("p", { clase: "msg", role: "status" });
+    const visor = el("div", {});
+    let parar = () => {};
+    const resolver = (folio) => {
+      parar();
+      visor.replaceChildren();
+      const x = displays.find((y) => y.folio === folio);
+      if (!x) return texto(msg, "Ese QR no es de un display de tu inventario.", "err");
+      ir(rutaParaDisplay(x));
+    };
+    const abrirCamara = () => {
+      visor.replaceChildren();
+      leerQr(resolver, (cancelar) => {
+        parar = cancelar;
+        visor.append(el("button", { type: "button", clase: "btn s sm", on: { click: () => { cancelar(); visor.replaceChildren(); } } }, ["Cerrar cámara"]));
+      }, (m, video) => {
+        if (video) { visor.prepend(video); return; }
+        texto(msg, m, "err");
+      });
+    };
+    return [
+      el("h2", { texto: "Escanear el QR" }),
+      el("p", { clase: "sub", texto: "Apunta la cámara al QR impreso en el display. La cámara solo se abre cuando tocas el botón." }),
+      el("button", { type: "button", clase: "btn p", on: { click: abrirCamara } }, ["Abrir cámara"]),
+      visor,
+      msg,
+      el("p", { clase: "hint", texto: "Si la cámara no funciona, escribe el folio de cuatro caracteres desde Inicio." }),
+    ];
+  }
+
   async function pHoy() {
     const [s, d] = await Promise.all([getJSON("/api/vendedor/saldo"), getJSON("/api/vendedor/displays")]);
     if (!s || !d) return null;
@@ -476,6 +518,14 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
       : s.horas_restantes + " h para entregar";
     const folioInput = el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", autocapitalize: "characters", "aria-label": "Folio del display" });
     const folioMsg = el("p", { clase: "msg", role: "status" });
+    const abrirFolio = () => {
+      const folio = folioInput.value.trim().toUpperCase();
+      if (folio.length !== 4) return;
+      const existe = (d.displays || []).find((x) => x.folio === folio);
+      if (!existe) return texto(folioMsg, "No encontramos ese folio en tu inventario.", "err");
+      ir(rutaParaDisplay(existe));
+    };
+    folioInput.addEventListener("input", () => { if (folioInput.value.trim().length === 4) abrirFolio(); });
     const nodos = [el("h2", { texto: "Hola, " + primer })];
     if (s.impago) nodos.push(el("div", { clase: "aviso alerta", texto: "Tienes un adeudo por impago. No puedes activar displays nuevos." }));
     nodos.push(
@@ -483,16 +533,9 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
         el("span", { clase: "vi" }, [icono(ICONO_NFC)]),
         el("span", { clase: "vt" }, [el("b", { texto: "Vender un display" }), el("span", { texto: "Acerca tu celular al display para empezar." })]),
       ]),
-      el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/p/" + enc("Escanear el QR del display")) } }, ["Escanear el QR del display"]),
+      el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/escanear") } }, ["Escanear el QR del display"]),
       el("span", { clase: "lbl", texto: "¿Prefieres escribir el folio?" }),
-      el("form", { novalidate: "", on: { submit: (e) => {
-        e.preventDefault();
-        const folio = folioInput.value.trim().toUpperCase();
-        if (folio.length !== 4) return;
-        const existe = (d.displays || []).find((x) => x.folio === folio);
-        if (!existe) return texto(folioMsg, "No encontramos ese folio en tu inventario.", "err");
-        ir(existe.estado === "libre" ? "#/vender/" + enc(folio) : "#/d/" + enc(folio));
-      } } }, [folioInput]),
+      el("form", { novalidate: "", on: { submit: (e) => { e.preventDefault(); abrirFolio(); } } }, [folioInput]),
       el("p", { clase: "hint", texto: "Son 4 caracteres y abre solo." }),
       folioMsg,
       el("div", { clase: "dos" }, [
@@ -1205,7 +1248,6 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
         el("div", { clase: "campo" }, [menuItem("Mis ventas", "#/ventas")]),
         el("div", { clase: "campo" }, [menuItem("Mi cuenta", "#/cuenta")]),
         el("div", { clase: "campo" }, [menuItem("Vender varios displays", "#/vender")]),
-        el("div", { clase: "campo" }, [menuItem("Mis datos de cobro", "#/p/" + enc("Mis datos de cobro"))]),
         el("a", { clase: "item", href: WA_AYUDA, target: "_blank", rel: "noopener" }, [el("b", { texto: "Hablar con soporte" }), el("span", { texto: "WhatsApp de Bien Visto" })]),
       ]),
     ];
