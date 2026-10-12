@@ -433,10 +433,10 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
   }
 
   const PANTALLAS = {
-    hoy: pHoy, vender: pVender, prueba: pPrueba, escanear: pEscanear, lote: pLote, bloqueo: pBloqueo, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
+    hoy: pHoy, vender: pVender, prueba: pPrueba, escanear: pEscanear, lote: pLote, bloqueo: pBloqueo, desempeno: pDesempeno, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
     ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, p: pProximamente,
   };
-  const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", escanear: "hoy", bloqueo: "saldo", displays: "displays", d: "displays", saldo: "saldo" };
+  const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", escanear: "hoy", bloqueo: "saldo", desempeno: "varios", displays: "displays", d: "displays", saldo: "saldo" };
 
   async function render() {
     if (!enPanel) return;
@@ -1577,6 +1577,52 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     return [raiz];
   }
 
+  // Mi desempeño ("Tu mes"): displays que Bien Visto confirmó como entregados este mes.
+  async function pDesempeno() {
+    const d = await getJSON("/api/vendedor/desempeno");
+    if (!d) return null;
+    const hoy = new Date();
+    const mes = hoy.toLocaleDateString("es-MX", { month: "long" });
+    const quedan = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate() - hoy.getDate();
+    const n = Number(d.entregados_mes) || 0;
+    const com = Number(d.comision_display) || COMISION_DISPLAY;
+    const nodos = [
+      el("div", { clase: "fila", style: "justify-content:space-between;align-items:flex-end" }, [
+        el("h2", { texto: "Tu mes", style: "margin:0" }),
+        el("span", { clase: "chip", texto: "Quedan " + quedan + (quedan === 1 ? " día" : " días") }),
+      ]),
+      el("div", { clase: "tarjeta", style: "margin-top:10px" }, [
+        el("span", { clase: "lbl", texto: "Displays entregados en " + mes }),
+        el("b", { texto: String(n), style: "font:600 40px/1 var(--fd)" }),
+        el("p", { clase: "hint", texto: n === 0 ? "Cuando entregues tu primer display y Bien Visto lo confirme, aparecerá aquí." : "Cada display que entregas y Bien Visto confirma suma a tu mes." }),
+      ]),
+      el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Tu comisión de " + mes }),
+        el("b", { texto: dinero(n * com) }),
+        el("p", { clase: "hint", texto: n + " × " + dinero(com) + ". La retienes al cobrar: del dinero del cliente te quedas " + dinero(com) + " y entregas " + dinero(PRECIO_DISPLAY - com) + " a Bien Visto." }),
+      ]),
+    ];
+    if (d.sin_entregar > 0) {
+      nodos.push(el("div", { clase: "tarjeta", style: "border-color:var(--ambar)" }, [
+        el("span", { clase: "lbl", texto: "Te están esperando" }),
+        el("p", { clase: "hint", texto: "Tienes " + d.sin_entregar + (d.sin_entregar === 1 ? " display vendido" : " displays vendidos") + " sin entregar. Cuando entregues el dinero, cuenta" + (d.sin_entregar === 1 ? "" : "n") + " en tu mes." }),
+        el("button", { type: "button", clase: "btn p sm", on: { click: () => ir("#/saldo") } }, ["Entregar ahora"]),
+      ]));
+    }
+    nodos.push(
+      el("details", { clase: "tarjeta" }, [
+        el("summary", { style: "font-weight:600;padding:10px 0;min-height:44px;cursor:pointer", texto: "Las reglas, en corto" }),
+        el("ul", { clase: "lista", style: "padding-left:18px" }, [
+          el("li", {}, ["Un display ", el("b", { texto: "cuenta cuando Bien Visto confirma tu entrega" }), ", no cuando lo vendes."]),
+          el("li", {}, ["El mes va del ", el("b", { texto: "1 al último día" }), ". El día 1 empiezas de cero."]),
+          el("li", {}, ["Una venta anulada no cuenta."]),
+        ]),
+      ]),
+      el("p", { clase: "hint", style: "text-align:center", texto: "Hoy tienes " + d.activos + " displays activos y " + d.escaneos_7d + " escaneos en 7 días." }),
+    );
+    return nodos;
+  }
+
   async function pVarios() {
     return [
       el("h2", { texto: "Varios" }),
@@ -1641,7 +1687,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
       ]),
       item("user", "Mi cuenta", "Tus datos y tu cuenta de cobro", "", "#/cuenta"),
       item("coin", "Mi saldo y entregas", "", enMano > 0 ? dinero(enMano) : "Al corriente", "#/saldo"),
-      item("mes", "Mi desempeño", "Tus entregas del mes", "", "#/p/" + enc("Mi desempeño")),
+      item("mes", "Mi desempeño", "Tus entregas del mes", "", "#/desempeno"),
       item("list", "Mis ventas y comisión", ok.length + (ok.length === 1 ? " venta" : " ventas"), "", "#/ventas"),
       el("div", { clase: "msep" }),
       item("book", "Manual de uso", "bienvisto.com.mx/ayuda/manual", "", "https://bienvisto.com.mx/ayuda/manual"),
