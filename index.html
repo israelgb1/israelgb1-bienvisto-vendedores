@@ -117,6 +117,9 @@ textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:2px solid va
 .drawer nav a{display:flex;align-items:center;min-height:50px;padding:10px 8px;border-radius:12px;font-weight:600;color:var(--tinta);text-decoration:none;font-size:16px}
 .drawer nav a:hover,.drawer nav a:focus-visible{background:var(--menta)}
 .drawer .btn{margin-top:12px}
+.opcion{display:flex;gap:10px;align-items:center;font-size:16px;margin:0 0 10px}
+select{width:100%;min-height:48px;padding:10px 14px;font:400 17px/24px Figtree,system-ui,sans-serif;border:2px solid var(--borde-s);border-radius:8px;background:#fff;color:var(--tinta)}
+.opcion input{width:auto;min-height:0;margin:0}
 </style>
 </head>
 <body>
@@ -409,10 +412,10 @@ textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:2px solid va
   }
 
   const PANTALLAS = {
-    hoy: pHoy, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
+    hoy: pHoy, vender: pVender, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
     ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, p: pProximamente,
   };
-  const PESTANA = { hoy: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
+  const PESTANA = { hoy: "hoy", vender: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
 
   async function render() {
     if (!enPanel) return;
@@ -454,18 +457,21 @@ textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:2px solid va
     const plazo = s.horas_restantes === null ? "Sin plazo corriendo"
       : s.plazo_vencido ? "Plazo vencido"
       : s.horas_restantes + " h para entregar";
+    const folioInput = el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", "aria-label": "Folio del display" });
     const nodos = [el("h2", { texto: "Hola, " + primer })];
     if (s.impago) nodos.push(el("div", { clase: "aviso alerta", texto: "Tienes un adeudo por impago. No puedes activar displays nuevos." }));
     nodos.push(
-      el("button", { type: "button", clase: "hero", on: { click: () => ir("#/p/" + enc("Vender un display")) } }, [
+      el("button", { type: "button", clase: "hero", on: { click: () => ir("#/vender") } }, [
         el("span", { clase: "hero-ico" }, [icono(ICONO_NFC)]),
         el("span", {}, [el("b", { texto: "Vender un display" }), el("small", { texto: "Acerca tu celular al display para empezar." })]),
       ]),
       el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/p/" + enc("Escanear el QR del display")) } }, ["Escanear el QR del display"]),
       el("span", { clase: "lbl", texto: "¿Prefieres escribir el folio?" }),
-      el("form", { novalidate: "", on: { submit: (e) => { e.preventDefault(); ir("#/p/" + enc("Activar un display")); } } }, [
-        el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", "aria-label": "Folio del display" }),
-      ]),
+      el("form", { novalidate: "", on: { submit: (e) => {
+        e.preventDefault();
+        const folio = folioInput.value.trim().toUpperCase();
+        if (folio.length === 4) ir("#/vender/" + enc(folio));
+      } } }, [folioInput]),
       el("p", { clase: "hint", texto: "Son 4 caracteres y abre solo." }),
       el("div", { clase: "dos" }, [
         el("div", { clase: "tarjeta" }, [el("b", { texto: "Debes entregar " + dinero(s.custodia) }), el("span", { texto: plazo })]),
@@ -493,8 +499,8 @@ textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:2px solid va
     };
     pintar("");
     const buscar = el("input", { placeholder: "Buscar por folio", "aria-label": "Buscar por folio", on: { input: () => pintar(buscar.value.trim()) } });
-    if (!lista.length) return [el("h2", { texto: "Mis displays" }), el("p", { clase: "hint", texto: "Aún no tienes displays asignados." })];
-    return [el("h2", { texto: "Mis displays" }), buscar, ul];
+    if (!lista.length) return conAviso([el("h2", { texto: "Mis displays" }), el("p", { clase: "hint", texto: "Aún no tienes displays asignados." })]);
+    return conAviso([el("h2", { texto: "Mis displays" }), buscar, ul]);
   }
 
   async function pDetalle([folio]) {
@@ -508,7 +514,7 @@ textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:2px solid va
       botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/cambiar") } }, ["Cambiar de negocio"]));
     }
     if (f.estado === "libre") {
-      botones.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/p/" + enc("Activar un display")) } }, ["Activar display"]));
+      botones.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/vender/" + enc(f.folio)) } }, ["Activar display"]));
     }
     return [
       el("div", { clase: "tarjeta centro" }, [
@@ -670,6 +676,144 @@ textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:2px solid va
       nodos.push(anular, msg);
     }
     return conAviso(nodos);
+  }
+
+  async function pVender([folioPre]) {
+    const d = await getJSON("/api/vendedor/displays");
+    if (!d) return null;
+    const libres = (d.displays || []).filter((x) => x.estado === "libre");
+    const nodos = [el("h2", { texto: "Vender un display" })];
+    if (!libres.length) {
+      nodos.push(el("p", { clase: "hint", texto: "No tienes displays libres para vender." }));
+      return conAviso(nodos);
+    }
+    const msg = el("p", { clase: "msg", role: "status" });
+    let negocioElegido = null;
+    let ventaPendiente = null;
+    let turnoBusqueda = 0;
+    let temporizador = null;
+    const resultados = el("ul", { clase: "lista" });
+    const elegido = el("div", { clase: "tarjeta", hidden: "" });
+    const buscar = el("input", { placeholder: "Ej. Taquería Lupita Zapopan", maxlength: "100", autocomplete: "off", "aria-label": "Buscar negocio" });
+
+    const pintarElegido = () => {
+      elegido.replaceChildren(
+        el("b", { texto: negocioElegido.nombre }),
+        el("span", { texto: negocioElegido.direccion }),
+        el("button", { type: "button", clase: "btn s sm", on: { click: () => { negocioElegido = null; elegido.hidden = true; } } }, ["Cambiar"])
+      );
+      elegido.hidden = false;
+    };
+
+    const buscarNegocio = async (q) => {
+      const mi = ++turnoBusqueda;
+      resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "Buscando…" })]));
+      try {
+        const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q));
+        if (res.status === 401) { sesionCaducada(); return; }
+        const datos = await res.json().catch(() => null);
+        if (mi !== turnoBusqueda) return;
+        resultados.replaceChildren();
+        if (!res.ok) { texto(msg, errorDe(datos), "err"); return; }
+        const lista = (datos && datos.resultados) || [];
+        if (!lista.length) {
+          resultados.append(el("li", {}, [el("span", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
+          return;
+        }
+        for (const r of lista) {
+          resultados.append(el("li", {}, [
+            el("button", { type: "button", clase: "item", on: { click: () => {
+              negocioElegido = r;
+              resultados.replaceChildren();
+              buscar.value = r.nombre;
+              pintarElegido();
+            } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion })]),
+          ]));
+        }
+      } catch (_) {
+        if (mi === turnoBusqueda) texto(msg, MSG_ERROR_RED, "err");
+      }
+    };
+
+    buscar.addEventListener("input", () => {
+      clearTimeout(temporizador);
+      const q = buscar.value.trim();
+      if (negocioElegido && q !== negocioElegido.nombre) { negocioElegido = null; elegido.hidden = true; }
+      if (q.length < 3) { turnoBusqueda++; resultados.replaceChildren(); return; }
+      temporizador = setTimeout(() => buscarNegocio(q), 450);
+    });
+
+    const contacto = el("input", { maxlength: "120" });
+    const whatsapp = el("input", { inputmode: "tel", placeholder: "Ej. 33 1234 5678" });
+    const referencia = el("input", { maxlength: "100" });
+    const campoRef = campo("Referencia de la transferencia", referencia);
+    campoRef.hidden = true;
+    const metodo = el("select", { on: { change: () => { campoRef.hidden = metodo.value !== "transferencia"; } } }, [
+      el("option", { value: "efectivo", texto: "Efectivo" }),
+      el("option", { value: "transferencia", texto: "Transferencia" }),
+    ]);
+    const lista = el("div", { clase: "campo" }, libres.map((f) =>
+      el("label", { clase: "opcion" }, [el("input", { type: "checkbox", value: f.folio, name: "folio", checked: folioPre === f.folio }), f.folio])
+    ));
+    const enviar = el("button", { type: "button", clase: "btn p" }, ["Vender y activar"]);
+    enviar.addEventListener("click", async () => {
+      texto(msg, "", "ok");
+      const seleccion = [...lista.querySelectorAll("input:checked")].map((i) => i.value);
+      if (!negocioElegido) return texto(msg, "Elige el negocio de la lista.", "err");
+      if (!seleccion.length) return texto(msg, "Elige al menos un display.", "err");
+      if (metodo.value === "transferencia" && !referencia.value.trim()) return texto(msg, "La transferencia requiere referencia.", "err");
+      enviar.disabled = true;
+      try {
+        if (!ventaPendiente) {
+          const crear = await postJSON("/api/vendedor/ventas", {
+            negocio: negocioElegido.nombre,
+            contacto: contacto.value.trim(),
+            whatsapp: whatsapp.value.trim(),
+            metodo: metodo.value,
+            folios: seleccion,
+          });
+          if (crear.status === 401) return;
+          if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(msg, errorDe(crear.datos), "err");
+          ventaPendiente = crear.datos.id;
+        }
+        const cobro = await postJSON("/api/vendedor/ventas/" + enc(ventaPendiente) + "/cobro", {
+          referencia: referencia.value.trim(),
+          url_resena: negocioElegido.enlace_resena,
+        });
+        if (cobro.status === 401) return;
+        if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
+          ventasCache = [];
+          aviso = "Listo: " + cobro.datos.displays_activos + " display(s) activos para " + negocioElegido.nombre + ".";
+          ir("#/displays");
+        } else {
+          texto(msg, errorDe(cobro.datos) + " La venta quedó pendiente: intenta de nuevo o envíala a revisión desde Ventas.", "err");
+          enviar.textContent = "Reintentar activación";
+        }
+      } catch (_) {
+        texto(msg, MSG_ERROR_RED + " La venta quedó pendiente: intenta de nuevo.", "err");
+        enviar.textContent = "Reintentar activación";
+      } finally {
+        enviar.disabled = false;
+      }
+    });
+
+    nodos.push(
+      el("span", { clase: "lbl", texto: "1 · Negocio" }),
+      buscar,
+      el("p", { clase: "hint", texto: "Escribe el nombre y elige de la lista." }),
+      resultados,
+      elegido,
+      el("span", { clase: "lbl", texto: "2 · Datos de la venta" }),
+      campo("Persona de contacto (opcional)", contacto),
+      campo("WhatsApp del negocio (opcional)", whatsapp),
+      campo("Forma de pago", metodo),
+      campoRef,
+      el("span", { clase: "lbl", texto: "3 · Displays que activas" }),
+      lista,
+      enviar,
+      msg,
+    );
+    return nodos;
   }
 
   async function pVarios() {
