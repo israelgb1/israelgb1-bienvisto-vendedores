@@ -1108,12 +1108,12 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       }
     };
     return [
-      el("div", { clase: "fila" }, [el("span", { clase: "folio", texto: f }), chip("prueba")]),
+      el("div", { clase: "fila", style: "justify-content:flex-start;gap:10px" }, [el("span", { clase: "folio", texto: f }), chip("prueba", "Modo prueba")]),
       el("h2", { texto: negocio }),
       el("p", { clase: "sub", texto: "El cliente ya puede acercar su celular: verá su reseña funcionando, con un aviso de demostración. Todavía no pagó y el display no es suyo. Cuando se convenza, sigue con la venta." }),
       el("div", { clase: "tarjeta" }, [
         el("span", { clase: "lbl", texto: "Tiempo de prueba" }),
-        el("b", { texto: "Quedan " + minutos + " min" }),
+        el("b", { texto: "Quedan " + minutos + " min", style: "display:block;font:600 30px/1 var(--fd);margin:4px 0 10px" }),
         el("div", { clase: "barra", role: "img", "aria-label": minutos + " de " + total + " minutos" }, [el("i", { style: "width:" + Math.round(minutos / total * 100) + "%" })]),
         el("p", { clase: "hint", texto: "Si el cliente no compra, el display queda libre y no se guarda ningún dato suyo." }),
       ]),
