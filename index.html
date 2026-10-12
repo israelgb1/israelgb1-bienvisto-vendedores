@@ -130,6 +130,8 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 .drawer nav a:hover,.drawer nav a:focus-visible{background:var(--menta)}
 .drawer .btn{margin-top:12px}
 .msg{margin:6px 0 0}
+.barra{height:10px;border-radius:999px;background:var(--menta);overflow:hidden;margin:6px 0 10px}
+.barra i{display:block;height:100%;background:var(--verde);border-radius:999px}
 .resultados{max-height:260px;overflow-y:auto;margin:4px 0 12px;padding:2px 2px 0 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 
 .drawer-in{background:var(--crema);width:88%;max-width:340px;height:100%;padding:16px 14px 20px;overflow-y:auto}
@@ -427,10 +429,10 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
   }
 
   const PANTALLAS = {
-    hoy: pHoy, vender: pVender, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
+    hoy: pHoy, vender: pVender, prueba: pPrueba, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
     ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, p: pProximamente,
   };
-  const PESTANA = { hoy: "hoy", vender: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
+  const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
 
   async function render() {
     if (!enPanel) return;
@@ -747,6 +749,87 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
     return conAviso(nodos);
   }
 
+  // ===== Pantalla de prueba (según el mockup) =====
+  // El negocio y el enlace de la prueba se guardan en este dispositivo. Si se cambia de teléfono, se busca el negocio otra vez.
+  function guardarPrueba(folio, datos) {
+    try { sessionStorage.setItem("bv_prueba_" + folio, JSON.stringify(datos)); } catch (_) { /* sin almacenamiento: se busca otra vez */ }
+  }
+  function leerPrueba(folio) {
+    try { return JSON.parse(sessionStorage.getItem("bv_prueba_" + folio) || "null"); } catch (_) { return null; }
+  }
+  function borrarPrueba(folio) {
+    try { sessionStorage.removeItem("bv_prueba_" + folio); } catch (_) { /* nada que borrar */ }
+  }
+
+  async function pPrueba([folio]) {
+    const f = String(folio || "").toUpperCase();
+    const d = await getJSON("/api/vendedor/displays");
+    if (!d) return null;
+    const x = (d.displays || []).find((y) => y.folio === f);
+    if (!x || x.estado !== "prueba") {
+      aviso = "Ese display ya no está en prueba.";
+      ir("#/hoy");
+      return null;
+    }
+    const minutos = x.prueba_min_restantes == null ? 0 : x.prueba_min_restantes;
+    const total = 30;
+    const dp = leerPrueba(f);
+    const negocio = (dp && dp.negocio) || x.negocio_asignado || "Negocio";
+    const msg = el("p", { clase: "msg", role: "status" });
+    const confirmar = (titulo, texto2, label, accion) => {
+      const hoja = el("div", { clase: "tarjeta" }, [
+        el("b", { texto: titulo }),
+        el("p", { clase: "hint", texto: texto2 }),
+        el("button", { type: "button", clase: "btn p sm", style: "width:100%", on: { click: accion } }, [label]),
+        el("button", { type: "button", clase: "btn s sm", style: "width:100%;margin-top:8px", on: { click: () => render() } }, ["Cancelar"]),
+      ]);
+      app.replaceChildren(hoja);
+    };
+    const terminar = async (siguiente) => {
+      const { status, datos } = await postJSON("/api/vendedor/pruebas/" + enc(f) + "/terminar", {});
+      if (status === 401) return;
+      if (status === 200 && datos && datos.success) {
+        borrarPrueba(f);
+        ventasCache = [];
+        siguiente();
+      } else {
+        texto(msg, errorDe(datos), "err");
+      }
+    };
+    return [
+      el("div", { clase: "fila" }, [el("span", { clase: "folio", texto: f }), chip("prueba")]),
+      el("h2", { texto: negocio }),
+      el("p", { clase: "sub", texto: "El cliente ya puede acercar su celular: verá su reseña funcionando, con un aviso de demostración. Todavía no pagó y el display no es suyo. Cuando se convenza, sigue con la venta." }),
+      el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Tiempo de prueba" }),
+        el("b", { texto: "Quedan " + minutos + " min" }),
+        el("div", { clase: "barra", role: "img", "aria-label": minutos + " de " + total + " minutos" }, [el("i", { style: "width:" + Math.round(minutos / total * 100) + "%" })]),
+        el("p", { clase: "hint", texto: "Si el cliente no compra, el display queda libre y no se guarda ningún dato suyo." }),
+      ]),
+      el("button", { type: "button", clase: "btn a", on: { click: () => {
+        sessionStorage.setItem("bv_seguir_" + f, "1");
+        ir("#/vender/" + enc(f));
+      } } }, ["Seguir con la venta"]),
+      el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => {
+        if (dp && dp.enlace) window.open(dp.enlace, "_blank", "noopener");
+        else texto(msg, "Para ver la reseña, busca el negocio otra vez desde «Seguir con la venta».", "err");
+      } } }, ["Ver lo que ve el cliente"]),
+      el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => confirmar(
+        "¿Terminar la prueba de " + f + "?",
+        "El display queda libre y no se guarda ningún dato del cliente. No cuenta como venta.",
+        "Terminar prueba",
+        () => terminar(() => { aviso = "Prueba terminada. " + f + " quedó libre."; ir("#/hoy"); }),
+      ) } }, ["Terminar la prueba"]),
+      el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => confirmar(
+        "¿Ya no lo está probando " + negocio + "?",
+        f + " sigue en modo prueba (quedan " + minutos + " min). Si el cliente ya no lo está probando, el display se libera y puedes usarlo con otro negocio. No se guarda ningún dato del cliente anterior.",
+        "Sí, ya no lo prueba",
+        () => terminar(() => { aviso = f + " quedó libre."; ir("#/vender/" + enc(f)); }),
+      ) } }, ["Usar este display con otro cliente"]),
+      msg,
+    ];
+  }
+
   // ===== Venta por pasos (según el mockup): folio → negocio → confirmar → datos → cobro → listo =====
   const FOLIO_APP = /^[ABCDEFGHJKLMNPQRSTUVWXYZ][2-9][ABCDEFGHJKLMNPQRSTUVWXYZ][2-9]$/;
   const PRECIO_DISPLAY = 350;
@@ -995,8 +1078,9 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
       const { status, datos } = await postJSON("/api/vendedor/pruebas", { folio: st.folio, negocio: st.negocio.nombre, url_resena: st.negocio.enlace_resena });
       if (status === 200 && datos && datos.success) {
         ventasCache = [];
-        aviso = "Prueba iniciada en " + st.negocio.nombre + " con " + st.folio + ". Tienes 30 min.";
-        ir("#/displays");
+        guardarPrueba(st.folio, { negocio: st.negocio.nombre, direccion: st.negocio.direccion, enlace: st.negocio.enlace_resena });
+        aviso = "Prueba iniciada: 30 minutos.";
+        ir("#/prueba/" + enc(st.folio));
       } else if (status !== 401) {
         texto(avisoGlobal, errorDe(datos), "err");
       }
@@ -1099,7 +1183,14 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
     // Arranque: folio desde la landing o pantalla de entrada
     if (folioPre) {
       const e = folioValido(folioPre);
+      const dp = leerPrueba(folioPre);
+      const x = displays.find((y) => y.folio === folioPre);
       if (e) { pantallaFolio(); texto(avisoGlobal, e, "err"); }
+      else if (dp && x && x.estado === "prueba" && sessionStorage.getItem("bv_seguir_" + folioPre)) {
+        sessionStorage.removeItem("bv_seguir_" + folioPre);
+        st.folio = folioPre; st.negocio = { nombre: dp.negocio, direccion: dp.direccion || "", enlace_resena: dp.enlace };
+        pantallaDatos();
+      }
       else { st.folio = folioPre; pantallaNegocio(); }
     } else {
       pantallaFolio();
