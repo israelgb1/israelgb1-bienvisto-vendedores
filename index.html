@@ -290,6 +290,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
 #app form button[type=submit]{margin-top:16px}
 .mini button b{line-height:1.2}
 .li .m{line-height:1.3}
+.qr-marco{width:fit-content;margin:6px auto;background:#fff;border:3px solid var(--verde-visto);border-radius:24px;padding:14px;box-shadow:0 0 0 6px #E7F0EC}.qr-marco svg{display:block;max-width:100%;height:auto}
 </style>
 </head>
 <body>
@@ -3965,7 +3966,7 @@ var qrcode = function() {
   // Tarjeta del negocio: nombre, dirección, calificación y reseñas de Google, y miniatura de la foto a la derecha.
   // Si Google no responde, la tarjeta queda solo con nombre y dirección.
   // Versión visible del panel: sirve para confirmar qué build corre el teléfono.
-  const VERSION_PANEL = "12 oct 2026 · QR 3";
+  const VERSION_PANEL = "12 oct 2026 · QR 4";
   const pieVersion = () => el("p", { clase: "hint", style: "text-align:center;margin:14px 0 0;opacity:.65", texto: "Panel · versión " + VERSION_PANEL });
   // Dibuja el QR de un enlace dentro de `caja`. Devuelve true si lo dibujó.
   function pintarQr(caja, enlace) {
@@ -3973,10 +3974,13 @@ var qrcode = function() {
     const q = window.qrcode(0, "M");
     q.addData(enlace);
     q.make();
-    caja.innerHTML = q.createSvgTag(5, 2, "Código QR para pagar", "Código QR para pagar");
-    const svg = caja.querySelector("svg");
+    caja.textContent = "";
+    const marco = el("div", { clase: "qr-marco" });
+    marco.innerHTML = q.createSvgTag(5, 2, "Código QR para pagar", "Código QR para pagar");
+    const svg = marco.querySelector("svg");
     if (!svg) return false;
     svg.style.width = "220px";
+    caja.append(marco);
     return true;
   }
   const tarjetaNegocio = (n) => {
