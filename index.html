@@ -1685,7 +1685,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const renderNegocio = () => {
       if (L.negocio) {
         cajaNegocio.replaceChildren(el("div", { clase: "tarjeta" }, [
-          el("span", { clase: "lbl", texto: "1 · Negocio" }),
+          el("span", { clase: "lbl", texto: "Negocio" }),
           el("b", { texto: L.negocio.nombre }),
           el("p", { clase: "hint", texto: L.negocio.direccion || "" }),
           el("button", { type: "button", clase: "btn s sm", on: { click: () => { L.negocio = null; renderNegocio(); renderCobro(); } } }, ["Cambiar negocio"]),
@@ -1706,7 +1706,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
           : [el("p", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
       };
       q.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(buscarAhora, 350); });
-      cajaNegocio.replaceChildren(el("span", { clase: "lbl", texto: "1 · Negocio" }), q, res);
+      cajaNegocio.replaceChildren(el("span", { clase: "lbl", texto: "Negocio" }), q, res);
     };
 
     const renderCliente = () => {
@@ -1716,13 +1716,17 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       nombre.addEventListener("input", () => { L.nombre = nombre.value; });
       wa.addEventListener("input", () => { L.wa = wa.value; });
       mail.addEventListener("input", () => { L.mail = mail.value; });
-      cajaCliente.replaceChildren(el("span", { clase: "lbl", texto: "2 · Cliente" }), campo("Nombre de quien recibe", nombre), campo("WhatsApp", wa), campo("Correo (opcional)", mail));
+      cajaCliente.replaceChildren(el("span", { clase: "lbl", texto: "Cliente" }), campo("Nombre de quien recibe", nombre), campo("WhatsApp", wa), campo("Correo (opcional)", mail));
     };
 
     const renderDisplays = () => {
       const bloqueado = Boolean(L.ventaId);
-      const quitar = (f) => el("button", { type: "button", clase: "btn s sm", "aria-label": "Quitar " + f, on: { click: () => { L.folios = L.folios.filter((x) => x !== f); renderDisplays(); renderResumen(); renderCobro(); } } }, ["Quitar"]);
-      const filas = L.folios.map((f) => el("li", {}, [el("div", { clase: "fila" }, [el("span", { clase: "folio sm", texto: f }), bloqueado ? el("span") : quitar(f)])]));
+      const quitar = (f) => el("button", { type: "button", clase: "chip r", "aria-label": "Quitar " + f, on: { click: () => { L.folios = L.folios.filter((x) => x !== f); renderDisplays(); renderResumen(); renderCobro(); } } }, ["Quitar"]);
+      const filas = L.folios.map((f) => el("li", { clase: "li" }, [
+        el("span", { clase: "folio sm", texto: f }),
+        el("span", { clase: "grow" }, [el("span", { clase: "m", texto: "ir.bienvisto.com.mx/" + f.toLowerCase() })]),
+        bloqueado ? el("span") : quitar(f),
+      ]));
       const folioIn = el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", autocapitalize: "characters", "aria-label": "Folio del display" });
       const sugeridos = [...libres].filter((f) => !L.folios.includes(f)).slice(0, 6);
       const pararLector = () => pararCamara();
@@ -1737,23 +1741,25 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         });
       } } }, ["Escanear QR"]);
       cajaDisplays.replaceChildren(
-        el("span", { clase: "lbl", texto: "3 · Displays (" + L.folios.length + "/" + MAX_LOTE + ")" }),
+        el("span", { clase: "lbl", texto: "Se activarán " + L.folios.length + " de " + MAX_LOTE }),
+        filas.length ? el("ul", { clase: "lista-filas" }, filas) : el("p", { clase: "hint", texto: "Aún no agregas displays. Toca el primero." }),
         bloqueado
           ? el("p", { clase: "hint", texto: "La venta ya se creó. Reintenta el cobro para activarla." })
           : el("div", {}, [
-            el("div", { clase: "fila" }, [folioIn, el("button", { type: "button", clase: "btn s sm", on: { click: () => { agregar(folioIn.value.trim()); folioIn.value = ""; } } }, ["Agregar"])]),
+            el("div", { clase: "fila", style: "margin-top:8px" }, [folioIn, el("button", { type: "button", clase: "btn s sm", on: { click: () => { agregar(folioIn.value.trim()); folioIn.value = ""; } } }, ["Agregar"])]),
             el("div", { clase: "fila", style: "margin-top:8px;flex-wrap:wrap" }, [escanear]),
+            sugeridos.length ? el("span", { clase: "lbl", style: "margin-top:12px", texto: "Libres a la mano" }) : el("span"),
             sugeridos.length ? el("div", { clase: "seg" }, sugeridos.map((f) => el("button", { type: "button", on: { click: () => agregar(f) } }, [f]))) : el("span"),
           ]),
-        filas.length ? el("ul", { clase: "lista" }, filas) : el("p", { clase: "hint", texto: "Aún no agregas displays." }),
         visor,
       );
     };
 
     const montar = () => {
       raiz.replaceChildren(
+        el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
         el("h2", { texto: "Activar varios" }),
-        el("p", { clase: "sub", texto: "Elige el negocio y el cliente una vez, y después agrega los displays. Promoción: " + PROMO_N + " por " + dinero(PROMO_PRECIO) + " en la misma venta." }),
+        el("p", { clase: "sub", texto: "Primero el cliente y su negocio; después agregas los displays. Promoción: " + PROMO_N + " por " + dinero(PROMO_PRECIO) + " en la misma venta." }),
         cajaNegocio,
         cajaCliente,
         cajaDisplays,
