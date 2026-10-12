@@ -3983,6 +3983,25 @@ var qrcode = function() {
     caja.append(marco);
     return true;
   }
+  // Ubicación recordada en este dispositivo: sirve para ordenar la búsqueda por texto (no se pide permiso aquí).
+  const recordarUbicacion = (pos) => {
+    try { localStorage.setItem("bv_ubicacion", JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() })); } catch (_) {}
+  };
+  // Devuelve "&lat=…&lng=…" si hay ubicación conocida; si el permiso ya está concedido, la refresca en silencio.
+  const sesgoBusqueda = async () => {
+    try {
+      const perm = navigator.permissions && navigator.permissions.query ? await navigator.permissions.query({ name: "geolocation" }) : null;
+      if (perm && perm.state === "granted" && navigator.geolocation) {
+        const pos = await new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 4000, maximumAge: 600000 }));
+        recordarUbicacion(pos);
+      }
+    } catch (_) {}
+    try {
+      const g = JSON.parse(localStorage.getItem("bv_ubicacion") || "null");
+      if (g && Number.isFinite(g.lat) && Number.isFinite(g.lng)) return "&lat=" + enc(String(g.lat)) + "&lng=" + enc(String(g.lng));
+    } catch (_) {}
+    return "";
+  };
   const tarjetaNegocio = (n) => {
     const PIN = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#0E6B5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
     const ratingLinea = el("p", { style: "margin:4px 0 0" });
@@ -4110,7 +4129,7 @@ var qrcode = function() {
         const mi = ++turnoBusqueda;
         avisoLista("Buscando…");
         try {
-          const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q));
+          const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q) + (await sesgoBusqueda()));
           if (res.status === 401) return sesionCaducada();
           const datos = await res.json().catch(() => null);
           if (mi !== turnoBusqueda) return;
@@ -4127,6 +4146,7 @@ var qrcode = function() {
         avisoLista("Buscando negocios cerca de ti…");
         try {
           const pos = await new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }));
+          recordarUbicacion(pos);
           const res = await fetch("/api/vendedor/buscar-cercanos?lat=" + enc(String(pos.coords.latitude)) + "&lng=" + enc(String(pos.coords.longitude)));
           if (res.status === 401) return sesionCaducada();
           const datos = await res.json().catch(() => null);
@@ -4640,7 +4660,7 @@ var qrcode = function() {
         const mi = ++turno;
         avisoLista("Buscando…");
         try {
-          const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q));
+          const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q) + (await sesgoBusqueda()));
           if (res.status === 401) return sesionCaducada();
           const datos = await res.json().catch(() => null);
           if (mi !== turno) return;
@@ -4658,6 +4678,7 @@ var qrcode = function() {
         avisoLista("Buscando negocios cerca de ti…");
         try {
           const pos = await new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }));
+          recordarUbicacion(pos);
           const res = await fetch("/api/vendedor/buscar-cercanos?lat=" + enc(String(pos.coords.latitude)) + "&lng=" + enc(String(pos.coords.longitude)));
           if (res.status === 401) return sesionCaducada();
           const datos = await res.json().catch(() => null);
