@@ -433,10 +433,10 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
   }
 
   const PANTALLAS = {
-    hoy: pHoy, vender: pVender, prueba: pPrueba, escanear: pEscanear, lote: pLote, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
+    hoy: pHoy, vender: pVender, prueba: pPrueba, escanear: pEscanear, lote: pLote, bloqueo: pBloqueo, displays: pDisplays, d: pDetalle, solicitar: pSolicitar, saldo: pSaldo,
     ventas: pVentas, v: pVenta, varios: pVarios, cuenta: pCuenta, p: pProximamente,
   };
-  const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", escanear: "hoy", displays: "displays", d: "displays", saldo: "saldo" };
+  const PESTANA = { hoy: "hoy", vender: "hoy", prueba: "hoy", escanear: "hoy", bloqueo: "saldo", displays: "displays", d: "displays", saldo: "saldo" };
 
   async function render() {
     if (!enPanel) return;
@@ -1051,7 +1051,47 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     tick();
   }
 
+  // Bloqueo para activar: mismas reglas que el panel de admin. El Worker vuelve a validar al cobrar.
+  function bloqueoDe(s) {
+    if (s.impago) return "deuda";
+    if (s.plazo_vencido) return "horas";
+    if (Number(s.custodia) + ENTREGA_DISPLAY > Number(s.tope)) return "tope";
+    return "";
+  }
+
+  // Si el vendedor no puede activar, lleva a la pantalla de bloqueo. Devuelve true cuando se bloquea.
+  async function bloqueadoParaActivar(folio) {
+    const s = await getJSON("/api/vendedor/saldo");
+    if (!s) return true;
+    const b = bloqueoDe(s);
+    if (b) ir("#/bloqueo" + (folio ? "/" + enc(folio) : ""));
+    return Boolean(b);
+  }
+
+  async function pBloqueo([folio]) {
+    const s = await getJSON("/api/vendedor/saldo");
+    if (!s) return null;
+    const b = bloqueoDe(s) || "tope";
+    const titulo = b === "deuda" ? "Liquida tu adeudo para seguir" : "Entrega para seguir activando";
+    const motivo = b === "deuda"
+      ? "Bien Visto retiró displays por impago y quedó un adeudo pendiente."
+      : b === "horas"
+        ? "Tu plazo para entregar el dinero cobrado ya venció."
+        : "Llegaste al tope de " + dinero(s.tope) + " de dinero de Bien Visto en tu poder.";
+    const f = folio ? String(folio).toUpperCase() : "";
+    return [
+      el("h2", { texto: titulo }),
+      el("p", { clase: "sub", texto: motivo + " Mientras no " + (b === "deuda" ? "lo liquides" : "entregues") + ", el panel no te deja activar más displays." + (f ? " El display " + f + " sigue libre." : "") }),
+      el("div", { clase: "tarjeta" }, [el("dl", { clase: "kv" }, [
+        el("dt", { texto: "En tu poder" }), el("dd", { texto: dinero(s.custodia) }),
+        el("dt", { texto: "Tope" }), el("dd", { texto: dinero(s.tope) }),
+      ])]),
+      el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/saldo") } }, ["Ver mi saldo y entregar"]),
+    ];
+  }
+
   async function pVender([folioPre]) {
+    if (await bloqueadoParaActivar(folioPre)) return null;
     const d = await getJSON("/api/vendedor/displays");
     if (!d) return null;
     const displays = d.displays || [];
@@ -1346,6 +1386,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
   }
 
   async function pLote() {
+    if (await bloqueadoParaActivar("")) return null;
     const d = await getJSON("/api/vendedor/displays");
     if (!d) return null;
     const libres = new Set((d.displays || []).filter((x) => x.estado === "libre").map((x) => x.folio));
