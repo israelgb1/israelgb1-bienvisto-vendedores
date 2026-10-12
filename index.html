@@ -217,6 +217,17 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 .scan .okread .btn.a{width:auto;min-height:44px;padding:10px 18px;font-size:15px}
 @keyframes scanpop{from{transform:scale(.9);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.scan .line,.scan .okread{animation:none}}
+.scan .scan-list{display:flex;gap:10px;flex-wrap:wrap;padding:10px 16px;min-height:48px;align-items:center;border-top:1px solid rgba(251,246,236,.15)}
+.scan .scan-list > span{font-size:14px;opacity:.8}
+.scan .scan-list .folio{color:var(--ambar);opacity:1;font-size:20px}
+.scan .scan-tip{font-size:15px;opacity:.7;padding:0 16px;margin:0}
+.scan .sch{display:inline-flex;align-items:center;gap:4px;background:rgba(251,246,236,.1);border-radius:999px;padding:2px 2px 2px 12px}
+.scan .sch button{width:32px;height:32px;border-radius:50%;color:var(--crema);font-size:14px;background:rgba(251,246,236,.12)}
+.scan .sch button:hover{background:#B3261E}
+.scan .scan-bot .btn.a{width:100%;min-height:52px;padding:14px 24px;margin:0}
+.scan .scan-bot .btn.a:disabled{opacity:.5}
+.scan .sctf input{background:#fff;color:var(--tinta);width:100%;min-height:48px;margin:6px 0;padding:10px 14px;border-radius:8px;font-size:17px;border:2px solid var(--borde-s);box-sizing:border-box}
+.scan .err.dark{color:#F6B8B2;font-size:14px;margin:6px 0 0}
 #app input{min-height:48px;border:2px solid var(--borde-s);border-radius:8px;padding:10px 14px;font-size:17px}
 #app input:focus{outline:3px solid var(--ambar);outline-offset:0;border-color:var(--tinta)}
 .helpl{display:block;width:auto;margin:14px auto 0;padding:10px 0;min-height:44px;background:none;color:var(--verde);font-size:15px;font-weight:600;text-decoration:underline;text-underline-offset:3px;border:0;text-align:center}
@@ -1394,6 +1405,128 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     tick();
   }
 
+  // Linterna de la pantalla verde. Solo se enciende si el navegador la reporta; si no, avisa.
+  function crearLinterna(acc) {
+    const sinLuz = "Este celular no deja encender la linterna desde el navegador.";
+    const btn = el("button", { type: "button", clase: "lin", "aria-pressed": "false", texto: "Linterna" });
+    btn.onclick = async () => {
+      const pista = acc.pista();
+      if (!pista) return acc.aviso("La cámara todavía no está lista.", false);
+      if (!(pista.getCapabilities && pista.getCapabilities().torch)) return acc.aviso(sinLuz, false);
+      const encendida = btn.getAttribute("aria-pressed") !== "true";
+      try {
+        await pista.applyConstraints({ advanced: [{ torch: encendida }] });
+        btn.setAttribute("aria-pressed", String(encendida));
+        acc.ov().classList.toggle("luz", encendida);
+      } catch (_) {
+        acc.aviso(sinLuz, false);
+      }
+    };
+    return btn;
+  }
+
+  // Escaneo de varios: la cámara sigue abierta entre display y display. Cada lectura válida se suma a la lista.
+  // opts: validar(folio, leidosEnOverlay) → error o ""; listo(folios); cerrar().
+  function abrirEscanerLote(opts) {
+    document.getElementById("scan-ov")?.remove();
+    let cerrado = false;
+    let parar = () => {};
+    let pista = null;
+    let leidos = [];
+    let ov = null;
+    const msg = el("p", { role: "status", texto: "Apunta al QR del display. Se lee solo, sin tomar foto." });
+    const marco = el("div", { clase: "frame" }, [el("i"), el("i"), el("i"), el("i"), el("div", { clase: "line" })]);
+    const vf = el("div", { clase: "vf" }, [marco, msg]);
+    const lista = el("div", { clase: "scan-list", "aria-live": "polite" });
+    const listo = el("button", { type: "button", clase: "btn a", texto: "Listo" });
+    listo.disabled = true;
+    const folioIn = el("input", { id: "scin", autocapitalize: "characters", autocomplete: "off", maxlength: "4", placeholder: "Ej. N3D8", "aria-describedby": "scin-e" });
+    const folioErr = el("p", { clase: "err dark", id: "scin-e", role: "alert" });
+    folioErr.hidden = true;
+    const tecleo = el("div", { clase: "sctf" }, [
+      el("label", { clase: "lbl", for: "scin", texto: "Folio del display", style: "color:var(--crema)" }),
+      folioIn,
+      folioErr,
+      el("p", { clase: "hint", style: "color:rgba(251,246,236,.75)", texto: "Está impreso al pie del display. Se agrega al teclear el 4.º carácter." }),
+    ]);
+    tecleo.hidden = true;
+    const botonTeclea = el("button", { type: "button", clase: "helpl", on: { click: () => { botonTeclea.hidden = true; tecleo.hidden = false; folioIn.focus(); } } }, ["¿No lee? Teclea el folio"]);
+
+    const aviso = (m, mal) => {
+      msg.textContent = m;
+      msg.className = mal ? "mal" : "";
+      if (mal) {
+        marco.className = "frame mal";
+        setTimeout(() => { marco.className = "frame"; }, 900);
+      }
+    };
+    const cerrar = (despues) => {
+      if (cerrado) return;
+      cerrado = true;
+      parar();
+      ov.remove();
+      if (despues) despues();
+    };
+    const pintarLista = () => {
+      lista.replaceChildren(...(leidos.length
+        ? leidos.map((f) => el("span", { clase: "sch" }, [
+          el("span", { clase: "folio sm", texto: f }),
+          el("button", { type: "button", "aria-label": "Quitar " + f, texto: "✕", on: { click: () => { leidos = leidos.filter((x) => x !== f); pintarLista(); aviso("Quitaste " + f + ". Puedes volver a escanearlo si te equivocaste.", false); } } }),
+        ]))
+        : [el("span", { texto: "Aún no hay displays leídos" })]));
+      listo.disabled = !leidos.length;
+      listo.textContent = leidos.length ? "Listo: agregar " + leidos.length + " al lote" : "Listo";
+    };
+    const agregarLeido = (f) => {
+      const e = opts.validar(f, leidos);
+      if (e) { aviso(e, true); return false; }
+      leidos.push(f);
+      pintarLista();
+      return true;
+    };
+    const iniciar = () => leerQr((folio) => {
+        if (cerrado) return;
+        if (agregarLeido(folio)) aviso("Leído: " + folio + ". Apunta al siguiente.", false);
+        iniciar();
+      },
+      (cancelar, track) => { parar = cancelar; pista = track || null; },
+      (m, video) => {
+        if (cerrado) { if (video) video.srcObject?.getTracks().forEach((t) => t.stop()); return; }
+        if (video) { vf.querySelector("video")?.remove(); vf.prepend(video); return; }
+        aviso(m, true);
+      });
+
+    folioIn.addEventListener("input", () => {
+      folioIn.value = folioIn.value.toUpperCase();
+      if (folioIn.value.length < 4) { folioErr.hidden = true; return; }
+      const f = folioIn.value;
+      const e = opts.validar(f, leidos);
+      if (e) { folioErr.textContent = e; folioErr.hidden = false; return; }
+      folioErr.hidden = true;
+      leidos.push(f);
+      pintarLista();
+      folioIn.value = "";
+      aviso("Agregado: " + f + ". Teclea otro o escanea.", false);
+    });
+    listo.onclick = () => { const fs = leidos.slice(); cerrar(() => opts.listo(fs)); };
+
+    ov = el("div", { id: "scan-ov", clase: "scan", role: "dialog", "aria-modal": "true", "aria-label": "Escanear cada display" }, [
+      el("div", { clase: "scan-top" }, [
+        el("button", { type: "button", clase: "x", "aria-label": "Cerrar cámara", on: { click: () => cerrar(opts.cerrar) } }, [el("b", { "aria-hidden": "true", texto: "✕" }), " Cerrar"]),
+        el("b", { texto: "Escanea cada display" }),
+        crearLinterna({ ov: () => ov, pista: () => pista, aviso: (m, mal) => aviso(m, mal) }),
+      ]),
+      vf,
+      lista,
+      el("p", { clase: "scan-tip", texto: "Toca ✕ para quitar un display leído por error." }),
+      el("div", { clase: "scan-bot" }, [listo, botonTeclea, tecleo]),
+    ]);
+    pintarLista();
+    document.body.append(ov);
+    window.addEventListener("hashchange", () => cerrar(opts.cerrar), { once: true });
+    iniciar();
+  }
+
   // Pantalla verde de escaneo, como en el mockup. La cámara se abre solo desde el toque que la llama.
   // opts: validar(folio) → texto de error o ""; okTexto(folio); continuar(folio); teclear(); cerrar().
   function abrirEscaner(opts) {
@@ -1405,7 +1538,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const msg = el("p", { role: "status", texto: "Apunta al QR del display. Se lee solo, sin tomar foto." });
     const marco = el("div", { clase: "frame" }, [el("i"), el("i"), el("i"), el("i"), el("div", { clase: "line" })]);
     const vf = el("div", { clase: "vf" }, [marco, msg]);
-    const linterna = el("button", { type: "button", clase: "lin", "aria-pressed": "false", texto: "Linterna" });
+    const linterna = crearLinterna({ ov: () => ov, pista: () => pista, aviso: (m, mal) => aviso(m, mal) });
     const aviso = (m, mal) => {
       msg.textContent = m;
       msg.className = mal ? "mal" : "";
@@ -1432,20 +1565,6 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         el("button", { type: "button", clase: "helpl", on: { click: () => cerrar(opts.teclear) } }, ["¿No lee? Teclea el folio"]),
       ]),
     ]);
-    const sinLuz = "Este celular no deja encender la linterna desde el navegador.";
-    linterna.onclick = async () => {
-      if (!pista) return aviso("La cámara todavía no está lista.", false);
-      const soporta = Boolean(pista.getCapabilities && pista.getCapabilities().torch);
-      if (!soporta) return aviso(sinLuz, false);
-      const encendida = linterna.getAttribute("aria-pressed") !== "true";
-      try {
-        await pista.applyConstraints({ advanced: [{ torch: encendida }] });
-        linterna.setAttribute("aria-pressed", String(encendida));
-        ov.classList.toggle("luz", encendida);
-      } catch (_) {
-        aviso(sinLuz, false);
-      }
-    };
     const leido = (folio) => {
       parar();
       vf.replaceChildren(el("div", { clase: "okread", role: "status" }, [
@@ -1977,206 +2096,271 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     return { total, aEntregar: total - n * COMISION_DISPLAY, enPromo: pares * PROMO_N };
   }
 
-  async function pLote() {
+  // Activar varios, en pantallas como en el mockup: negocio → displays → cobro → listo.
+  // El estado de la venta vive en LOTE; si se pierde (recarga), vuelve a «Varios».
+  let LOTE = null;
+  const nuevoLote = (negocio) => ({ negocio, nombre: "", wa: "", mail: "", folios: [], inv: null, ventaId: null, hecho: null });
+
+  // Mismas reglas que el escaneo y el mockup. enLista: folios ya en el lote o en la lectura en curso.
+  function validarLote(f, enLista) {
+    f = String(f || "").toUpperCase();
+    const lista = enLista || [];
+    if (!FOLIO_APP.test(f)) return "Ese folio no es válido.";
+    if (lista.includes(f)) return f + " ya está en el lote.";
+    if (lista.length >= MAX_LOTE) return "Una venta admite hasta " + MAX_LOTE + " displays.";
+    const d = LOTE && LOTE.inv ? LOTE.inv.get(f) : null;
+    if (!d) return "Ese QR no es de un display de tu inventario.";
+    if (d.estado === "activo") return f + " ya está activo con " + (d.negocio_asignado || "otro negocio") + ". Usa otro display.";
+    if (d.estado === "retirado") return f + " está retirado y no se puede volver a usar en un lote.";
+    if (d.estado === "prueba") return f + " está en prueba. Cóbralo o termina la prueba primero.";
+    return "";
+  }
+
+  function lotePromoNota(n) {
+    if (!n) return null;
+    const k = n % PROMO_N;
+    if (k === 0) return el("div", { clase: "aviso", role: "status", texto: "Promoción aplicada: " + n + " displays por " + dinero(totalLote(n).total) + ". Tu comisión no cambia: " + dinero(n * COMISION_DISPLAY) + "." });
+    const f = PROMO_N - k;
+    return el("div", { clase: "aviso", role: "status", texto: "Agrega " + f + (f === 1 ? " display" : " displays") + " más y aplica la promoción. Los " + PROMO_N + " salen en " + dinero(PROMO_PRECIO) + " en vez de " + dinero(PROMO_N * PRECIO_DISPLAY) + "." });
+  }
+
+  // Paso 1 · Negocio nuevo: negocio y cliente una sola vez.
+  async function pantallaLoteNuevo() {
     if (await bloqueadoParaActivar("")) return null;
-    const d = await getJSON("/api/vendedor/displays");
-    if (!d) return null;
-    const libres = new Set((d.displays || []).filter((x) => x.estado === "libre").map((x) => x.folio));
-    const L = { negocio: null, nombre: "", wa: "", mail: "", folios: [], ventaId: null, hecho: null };
+    LOTE = nuevoLote(null);
     const msg = el("p", { clase: "msg", role: "status" });
-    const raiz = el("div", {});
+    const q = el("input", { type: "search", placeholder: "Nombre del negocio", "aria-label": "Buscar negocio", maxlength: "100" });
+    const res = el("div", { clase: "resultados" });
     const cajaNegocio = el("div", {});
-    const cajaCliente = el("div", {});
-    const cajaDisplays = el("div", {});
-    const visor = el("div", {});
-    const cajaResumen = el("div", {});
-    const cajaCobro = el("div", {});
-    let pararCamara = () => {};
-
-    const renderResumen = () => {
-      const n = L.folios.length;
-      if (!n) return cajaResumen.replaceChildren();
-      const t = totalLote(n);
-      cajaResumen.replaceChildren(el("div", { clase: "tarjeta" }, [
-        el("span", { clase: "lbl", texto: "Total a cobrar" }),
-        el("b", { texto: dinero(t.total) }),
-        el("p", { clase: "hint", texto: n + (n === 1 ? " display" : " displays") + (t.enPromo ? " · " + t.enPromo + " en promoción" : "") + " · a entregar " + dinero(t.aEntregar) }),
-      ]));
-    };
-
-    const renderCobro = () => {
-      const n = L.folios.length;
-      if (!n) return cajaCobro.replaceChildren();
-      const t = totalLote(n);
-      const marca = el("input", { type: "checkbox", id: "marca-lote" });
-      const boton = el("button", { type: "button", clase: "btn a", style: "margin-top:12px" }, [L.ventaId ? "Reintentar activación" : "Cobrar y activar " + n + (n === 1 ? " display" : " displays")]);
-      const activar = async () => {
-        texto(msg, "", "ok");
-        if (!L.negocio) return texto(msg, "Elige el negocio.", "err");
-        const eNombre = errNombreCliente(L.nombre);
-        if (eNombre) return texto(msg, eNombre, "err");
-        const eWa = errWhatsappCliente(L.wa);
-        if (eWa) return texto(msg, eWa, "err");
-        if (!marca.checked) return texto(msg, "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(t.aEntregar) + ".", "err");
-        boton.disabled = true;
-        try {
-          if (!L.ventaId) {
-            const eMail = errCorreoCliente(L.mail);
-        if (eMail) return texto(msg, eMail, "err");
-        const crear = await postJSON("/api/vendedor/ventas", { negocio: L.negocio.nombre, contacto: L.nombre.trim(), whatsapp: L.wa.trim(), correo: L.mail.trim().toLowerCase() || null, metodo: "efectivo", direccion: L.negocio.direccion, folios: L.folios });
-            if (crear.status === 401) return;
-            if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(msg, errorDe(crear.datos), "err");
-            L.ventaId = crear.datos.id;
-            renderDisplays();
-          }
-          const cobro = await postJSON("/api/vendedor/ventas/" + enc(L.ventaId) + "/cobro", { referencia: "", url_resena: L.negocio.enlace_resena });
-          if (cobro.status === 401) return;
-          if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
-            ventasCache = [];
-            L.hecho = L.folios.slice();
-            L.hecho.forEach((f) => libres.delete(f));
-            return pantallaLoteListo();
-          }
-          texto(msg, errorDe(cobro.datos) + " La venta quedó pendiente: intenta de nuevo o envíala a revisión desde Ventas.", "err");
-          renderCobro();
-        } catch (_) {
-          texto(msg, MSG_ERROR_RED + " La venta quedó pendiente: intenta de nuevo.", "err");
-          renderCobro();
-        } finally {
-          boton.disabled = false;
-        }
-      };
-      boton.addEventListener("click", activar);
-      cajaCobro.replaceChildren(
-        el("label", { clase: "opcion", for: "marca-lote" }, [marca, el("span", { texto: "Confirmo que cobré " + dinero(t.total) + " en efectivo y me comprometo a entregar " + dinero(t.aEntregar) + "." })]),
-        boton,
-      );
-    };
-
-    const agregar = (f) => {
-      f = String(f || "").toUpperCase();
-      if (!FOLIO_APP.test(f)) return texto(msg, "Ese folio no es válido.", "err");
-      if (!libres.has(f)) return texto(msg, "El display " + f + " no está libre en tu inventario.", "err");
-      if (L.folios.includes(f)) return texto(msg, f + " ya está en la lista.", "err");
-      if (L.folios.length >= MAX_LOTE) return texto(msg, "Una venta admite hasta " + MAX_LOTE + " displays.", "err");
-      L.folios.push(f);
-      texto(msg, "", "ok");
-      renderDisplays();
-      renderResumen();
-      renderCobro();
-    };
-
-    const renderNegocio = () => {
-      if (L.negocio) {
+    const pintarNegocio = () => {
+      if (LOTE.negocio) {
         cajaNegocio.replaceChildren(el("div", { clase: "tarjeta" }, [
           el("span", { clase: "lbl", texto: "Negocio" }),
-          el("b", { texto: L.negocio.nombre }),
-          el("p", { clase: "hint", texto: L.negocio.direccion || "" }),
-          el("button", { type: "button", clase: "btn s sm", on: { click: () => { L.negocio = null; renderNegocio(); renderCobro(); } } }, ["Cambiar negocio"]),
+          el("b", { texto: LOTE.negocio.nombre }),
+          el("p", { clase: "hint", texto: LOTE.negocio.direccion || "" }),
+          el("button", { type: "button", clase: "btn s sm", on: { click: () => { LOTE.negocio = null; q.value = ""; res.replaceChildren(); pintarNegocio(); } } }, ["Cambiar negocio"]),
         ]));
         return;
       }
-      const q = el("input", { type: "search", placeholder: "Nombre del negocio", "aria-label": "Buscar negocio", maxlength: "100" });
-      const res = el("div", { clase: "resultados" });
-      let temporizador = null;
-      const buscarAhora = async () => {
-        const t = q.value.trim();
-        if (t.length < 3) return res.replaceChildren();
-        const r = await getJSON("/api/vendedor/buscar-negocio?q=" + enc(t)).catch(() => null);
-        if (!r) return res.replaceChildren(el("p", { clase: "hint", texto: MSG_ERROR_RED }));
-        const items = r.resultados || [];
-        res.replaceChildren(...(items.length
-          ? items.map((x) => el("button", { type: "button", clase: "item", on: { click: () => { L.negocio = x; renderNegocio(); renderCobro(); } } }, [el("b", { texto: x.nombre }), el("span", { texto: x.direccion || "" })]))
-          : [el("p", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
-      };
-      q.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(buscarAhora, 350); });
       cajaNegocio.replaceChildren(el("span", { clase: "lbl", texto: "Negocio" }), q, res);
     };
+    let temporizador = null;
+    const buscarAhora = async () => {
+      const t = q.value.trim();
+      if (t.length < 3) return res.replaceChildren();
+      const r = await getJSON("/api/vendedor/buscar-negocio?q=" + enc(t)).catch(() => null);
+      if (!r) return res.replaceChildren(el("p", { clase: "hint", texto: MSG_ERROR_RED }));
+      const items = r.resultados || [];
+      res.replaceChildren(...(items.length
+        ? items.map((x) => el("button", { type: "button", clase: "item", on: { click: () => { LOTE.negocio = x; pintarNegocio(); } } }, [el("b", { texto: x.nombre }), el("span", { texto: x.direccion || "" })]))
+        : [el("p", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
+    };
+    q.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(buscarAhora, 350); });
+    pintarNegocio();
 
-    const renderCliente = () => {
-      const nombre = el("input", { value: L.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
-      const wa = el("input", { value: L.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
-      const mail = el("input", { value: L.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
-      nombre.addEventListener("input", () => { L.nombre = nombre.value; });
-      wa.addEventListener("input", () => { L.wa = wa.value; });
-      mail.addEventListener("input", () => { L.mail = mail.value; });
-      cajaCliente.replaceChildren(el("span", { clase: "lbl", texto: "Cliente" }), campo("Nombre de quien recibe", nombre), campo("WhatsApp", wa), campo("Correo (opcional)", mail));
+    const nombre = el("input", { maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
+    const wa = el("input", { inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
+    const mail = el("input", { inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
+    nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
+    wa.addEventListener("input", () => { LOTE.wa = wa.value; });
+    mail.addEventListener("input", () => { LOTE.mail = mail.value; });
+
+    const continuar = () => {
+      texto(msg, "", "ok");
+      if (!LOTE.negocio) return texto(msg, "Elige el negocio.", "err");
+      const eNombre = errNombreCliente(LOTE.nombre);
+      if (eNombre) return texto(msg, eNombre, "err");
+      const eWa = errWhatsappCliente(LOTE.wa);
+      if (eWa) return texto(msg, eWa, "err");
+      const eMail = errCorreoCliente(LOTE.mail);
+      if (eMail) return texto(msg, eMail, "err");
+      ir("#/lote/actual");
     };
 
-    const renderDisplays = () => {
-      const bloqueado = Boolean(L.ventaId);
-      const quitar = (f) => el("button", { type: "button", clase: "chip r", "aria-label": "Quitar " + f, on: { click: () => { L.folios = L.folios.filter((x) => x !== f); renderDisplays(); renderResumen(); renderCobro(); } } }, ["Quitar"]);
-      const filas = L.folios.map((f) => el("li", { clase: "li" }, [
-        el("span", { clase: "folio sm", texto: f }),
-        el("span", { clase: "grow" }, [el("span", { clase: "m", texto: "ir.bienvisto.com.mx/" + f.toLowerCase() })]),
-        bloqueado ? el("span") : quitar(f),
-      ]));
-      const folioIn = el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", autocapitalize: "characters", "aria-label": "Folio del display" });
-      const sugeridos = [...libres].filter((f) => !L.folios.includes(f)).slice(0, 6);
-      const pararLector = () => pararCamara();
-      const escanear = el("button", { type: "button", clase: "btn s", on: { click: () => {
-        visor.replaceChildren();
-        leerQr((f) => { visor.replaceChildren(); agregar(f); }, (cancelar) => {
-          pararCamara = cancelar;
-          visor.append(el("button", { type: "button", clase: "btn s sm", on: { click: () => { pararLector(); visor.replaceChildren(); } } }, ["Cerrar cámara"]));
-        }, (m, video) => {
-          if (video) return visor.prepend(video);
-          texto(msg, m, "err");
-        });
-      } } }, ["Escanear QR"]);
-      cajaDisplays.replaceChildren(
-        el("span", { clase: "lbl", texto: "Se activarán " + L.folios.length + " de " + MAX_LOTE }),
-        filas.length ? el("ul", { clase: "lista-filas" }, filas) : el("p", { clase: "hint", texto: "Aún no agregas displays. Toca el primero." }),
-        bloqueado
-          ? el("p", { clase: "hint", texto: "La venta ya se creó. Reintenta el cobro para activarla." })
-          : el("div", {}, [
-            el("div", { clase: "fila", style: "margin-top:8px" }, [folioIn, el("button", { type: "button", clase: "btn s sm", on: { click: () => { agregar(folioIn.value.trim()); folioIn.value = ""; } } }, ["Agregar"])]),
-            el("div", { clase: "fila", style: "margin-top:8px;flex-wrap:wrap" }, [escanear]),
-            sugeridos.length ? el("span", { clase: "lbl", style: "margin-top:12px", texto: "Libres a la mano" }) : el("span"),
-            sugeridos.length ? el("div", { clase: "seg" }, sugeridos.map((f) => el("button", { type: "button", on: { click: () => agregar(f) } }, [f]))) : el("span"),
-          ]),
-        visor,
-      );
-    };
+    return [
+      el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
+      el("h2", { texto: "Activar varios" }),
+      el("p", { clase: "sub", texto: "Primero el cliente y su negocio; después agregas los displays. Promoción: " + PROMO_N + " por " + dinero(PROMO_PRECIO) + " en la misma venta." }),
+      cajaNegocio,
+      el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Cliente" }),
+        campo("Nombre de quien recibe", nombre),
+        campo("WhatsApp", wa),
+        campo("Correo (opcional)", mail),
+      ]),
+      el("button", { type: "button", clase: "btn a", on: { click: continuar } }, ["Siguiente: agregar displays"]),
+      msg,
+    ];
+  }
 
-    const montar = () => {
-      raiz.replaceChildren(
-        el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
-        el("h2", { texto: "Activar varios" }),
-        el("p", { clase: "sub", texto: "Primero el cliente y su negocio; después agregas los displays. Promoción: " + PROMO_N + " por " + dinero(PROMO_PRECIO) + " en la misma venta." }),
-        cajaNegocio,
-        cajaCliente,
-        cajaDisplays,
-        cajaResumen,
-        cajaCobro,
-        msg,
-      );
-      renderNegocio();
-      renderCliente();
-      renderDisplays();
-      renderResumen();
-      renderCobro();
-    };
+  // Paso 2 · Displays del negocio: se agregan con folio, con lista de libres o escaneando varios.
+  async function pantallaLoteActual() {
+    if (await bloqueadoParaActivar("")) return null;
+    if (!LOTE || !LOTE.negocio) { ir("#/varios"); return null; }
+    const d = await getJSON("/api/vendedor/displays");
+    if (!d) return null;
+    LOTE.inv = new Map((d.displays || []).map((x) => [x.folio, x]));
+    const msg = el("p", { clase: "msg", role: "status" });
+    const n = LOTE.folios.length;
+    const bloqueado = Boolean(LOTE.ventaId);
+    const libres = [...LOTE.inv.values()].filter((x) => x.estado === "libre" && !LOTE.folios.includes(x.folio)).map((x) => x.folio);
 
-    const pantallaLoteListo = () => {
-      const n = L.hecho.length;
-      raiz.replaceChildren(
-        el("h2", { texto: n + (n === 1 ? " display activo" : " displays activos") }),
-        el("p", { clase: "sub", texto: "Desde ahora, cada escaneo lleva a dejar una reseña de " + L.negocio.nombre + "." }),
-        el("div", { clase: "tarjeta" }, [el("dl", { clase: "kv" }, [
-          el("dt", { texto: "Negocio" }), el("dd", { texto: L.negocio.nombre }),
-          el("dt", { texto: "Dirección" }), el("dd", { texto: L.negocio.direccion || "—" }),
-          el("dt", { texto: "Cliente" }), el("dd", { texto: L.nombre.trim() }),
-        ])]),
-        el("span", { clase: "lbl", texto: "Displays activados" }),
-        el("ul", { clase: "lista" }, L.hecho.map((f) => el("li", {}, [el("span", { clase: "folio sm", texto: f })]))),
-        el("button", { type: "button", clase: "btn s", on: { click: () => { L.folios = []; L.ventaId = null; L.hecho = null; montar(); } } }, ["Agregar más a este negocio"]),
-        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { aviso = n + (n === 1 ? " display activado." : " displays activados."); ir("#/hoy"); } } }, ["Terminar"]),
-      );
+    const agregarFolio = (f) => {
+      const e = validarLote(f, LOTE.folios);
+      if (e) return texto(msg, e, "err");
+      LOTE.folios.push(String(f).toUpperCase());
+      render();
     };
+    const folioIn = el("input", { id: "lf", placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", autocapitalize: "characters", "aria-label": "Folio del display" });
 
-    montar();
-    return [raiz];
+    const filas = LOTE.folios.map((f) => el("div", { clase: "row", style: "padding:6px 0" }, [
+      el("span", { clase: "folio sm", texto: f }),
+      el("span", { clase: "grow hint", style: "margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", texto: "ir.bienvisto.com.mx/" + f.toLowerCase() }),
+      bloqueado ? el("span") : el("button", { type: "button", clase: "chip r", "aria-label": "Quitar " + f, on: { click: () => { LOTE.folios = LOTE.folios.filter((x) => x !== f); render(); } } }, ["Quitar"]),
+    ]));
+
+    const siguiente = el("button", { type: "button", clase: "btn a", on: { click: () => ir("#/lote/cobro") } }, [n ? "Siguiente: cobrar " + dinero(totalLote(n).total) : "Elige al menos un display"]);
+    siguiente.disabled = !n;
+
+    const controles = bloqueado
+      ? [el("p", { clase: "hint", texto: "La venta ya se creó. Termina el cobro para activarla." })]
+      : [
+        el("button", { type: "button", clase: "btn s qr", on: { click: () => abrirEscanerLote({
+          validar: (f, enOverlay) => validarLote(f, LOTE.folios.concat(enOverlay)),
+          listo: (fs) => { LOTE.folios.push(...fs); render(); },
+        }) } }, [icono(ICONO_QR), "Escanear QR de varios"]),
+        el("form", { novalidate: "", on: { submit: (e) => { e.preventDefault(); agregarFolio(folioIn.value.trim()); } } }, [
+          el("label", { clase: "lbl", for: "lf", texto: "O teclea el folio" }),
+          el("div", { clase: "fila" }, [folioIn, el("button", { type: "submit", clase: "btn s sm" }, ["Agregar"])]),
+        ]),
+        libres.length ? el("span", { clase: "lbl", texto: "Libres a la mano" }) : el("span"),
+        libres.length ? el("div", { clase: "seg", style: "flex-wrap:wrap;overflow:visible" }, [
+          ...libres.slice(0, 6).map((f) => el("button", { type: "button", on: { click: () => agregarFolio(f) } }, [f])),
+          libres.length > 6 ? el("span", { clase: "hint", style: "align-self:center", texto: "+" + (libres.length - 6) + " más: teclea el folio" }) : el("span"),
+        ]) : el("span"),
+      ];
+
+    return [
+      el("h2", { texto: LOTE.negocio.nombre }),
+      LOTE.negocio.direccion ? el("p", { clase: "hint", style: "margin:0 0 6px", texto: LOTE.negocio.direccion }) : el("span"),
+      el("p", { clase: "sub", texto: "Escanea o teclea cada display y confirma una sola vez." }),
+      lotePromoNota(n) || el("span"),
+      el("div", { clase: "card" }, [
+        el("span", { clase: "lbl", texto: "Se activarán " + n + " de " + MAX_LOTE }),
+        n ? el("div", {}, filas) : el("p", { clase: "hint", texto: "Aún no hay displays. Toca el primero." }),
+      ]),
+      ...controles,
+      siguiente,
+      el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => { LOTE = null; ir("#/varios"); } } }, ["Cambiar negocio"]),
+      msg,
+    ];
+  }
+
+  // Paso 3 · Cobro del lote: el precio y la comisión salen de totalLote; el cliente se pide si falta.
+  async function pantallaLoteCobro() {
+    if (await bloqueadoParaActivar("")) return null;
+    if (!LOTE || !LOTE.negocio) { ir("#/varios"); return null; }
+    if (!LOTE.folios.length) { ir("#/lote/actual"); return null; }
+    const n = LOTE.folios.length;
+    const t = totalLote(n);
+    const msg = el("p", { clase: "msg", role: "status" });
+    const nombre = el("input", { value: LOTE.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
+    const wa = el("input", { value: LOTE.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
+    const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
+    nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
+    wa.addEventListener("input", () => { LOTE.wa = wa.value; });
+    mail.addEventListener("input", () => { LOTE.mail = mail.value; });
+    const marca = el("input", { type: "checkbox", id: "marca-lote" });
+    const boton = el("button", { type: "button", clase: "btn a", style: "margin-top:12px" }, [LOTE.ventaId ? "Reintentar activación" : "Cobrar y activar " + n + (n === 1 ? " display" : " displays")]);
+
+    const activar = async () => {
+      texto(msg, "", "ok");
+      const eNombre = errNombreCliente(LOTE.nombre);
+      if (eNombre) return texto(msg, eNombre, "err");
+      const eWa = errWhatsappCliente(LOTE.wa);
+      if (eWa) return texto(msg, eWa, "err");
+      if (!marca.checked) return texto(msg, "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(t.aEntregar) + ".", "err");
+      boton.disabled = true;
+      try {
+        if (!LOTE.ventaId) {
+          const eMail = errCorreoCliente(LOTE.mail);
+          if (eMail) return texto(msg, eMail, "err");
+          const crear = await postJSON("/api/vendedor/ventas", { negocio: LOTE.negocio.nombre, contacto: LOTE.nombre.trim(), whatsapp: LOTE.wa.trim(), correo: LOTE.mail.trim().toLowerCase() || null, metodo: "efectivo", direccion: LOTE.negocio.direccion, folios: LOTE.folios });
+          if (crear.status === 401) return;
+          if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(msg, errorDe(crear.datos), "err");
+          LOTE.ventaId = crear.datos.id;
+        }
+        const cobro = await postJSON("/api/vendedor/ventas/" + enc(LOTE.ventaId) + "/cobro", { referencia: "", url_resena: LOTE.negocio.enlace_resena });
+        if (cobro.status === 401) return;
+        if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
+          ventasCache = [];
+          LOTE.hecho = LOTE.folios.slice();
+          return ir("#/lote/listo");
+        }
+        texto(msg, errorDe(cobro.datos) + " La venta quedó pendiente: intenta de nuevo o envíala a revisión desde Ventas.", "err");
+        boton.textContent = "Reintentar activación";
+      } catch (_) {
+        texto(msg, MSG_ERROR_RED + " La venta quedó pendiente: intenta de nuevo.", "err");
+        boton.textContent = "Reintentar activación";
+      } finally {
+        boton.disabled = false;
+      }
+    };
+    boton.addEventListener("click", activar);
+
+    return [
+      el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · " + n + (n === 1 ? " display" : " displays") })]),
+      el("h2", { texto: "Cobra antes de activar" }),
+      el("p", { clase: "sub", texto: "El precio es fijo y no se puede cambiar." }),
+      el("div", { clase: "tarjeta" }, [
+        el("b", { texto: dinero(t.total), style: "font:600 32px/1 var(--fd)" }),
+        el("p", { clase: "hint", texto: (t.enPromo ? t.enPromo + " en promoción · " : n > 1 ? n + " × " + dinero(PRECIO_DISPLAY) + " · " : "") + "IVA incluido" }),
+        t.enPromo ? el("p", { clase: "hint", style: "margin:8px 0 0", texto: "Promoción aplicada. El cliente ahorra " + dinero(n * PRECIO_DISPLAY - t.total) + "." }) : el("span"),
+        el("div", { clase: "split", style: "margin-top:12px" }, [
+          el("div", {}, [el("b", { texto: dinero(n * COMISION_DISPLAY) }), el("span", { texto: "Tu comisión" })]),
+          el("div", {}, [el("b", { texto: dinero(t.aEntregar) }), el("span", { texto: "Entregas a Bien Visto" })]),
+        ]),
+      ]),
+      el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Cliente" }),
+        campo("Nombre de quien recibe", nombre),
+        campo("WhatsApp", wa),
+        campo("Correo (opcional)", mail),
+      ]),
+      el("label", { clase: "opcion", for: "marca-lote" }, [marca, el("span", { texto: "Confirmo que cobré " + dinero(t.total) + " en efectivo y me comprometo a entregar " + dinero(t.aEntregar) + "." })]),
+      boton,
+      el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => ir("#/lote/actual") } }, ["Volver a los displays"]),
+      msg,
+    ];
+  }
+
+  // Paso 4 · Listo: resumen de lo activado y opciones para seguir.
+  function pantallaLoteListo() {
+    if (!LOTE || !LOTE.hecho || !LOTE.hecho.length) { ir("#/varios"); return null; }
+    const n = LOTE.hecho.length;
+    return [
+      el("h2", { texto: n + (n === 1 ? " display activo" : " displays activos") }),
+      el("p", { clase: "sub", texto: "Desde ahora, cada escaneo lleva a dejar una reseña de " + LOTE.negocio.nombre + "." }),
+      el("div", { clase: "tarjeta" }, [el("dl", { clase: "kv" }, [
+        el("dt", { texto: "Negocio" }), el("dd", { texto: LOTE.negocio.nombre }),
+        el("dt", { texto: "Dirección" }), el("dd", { texto: LOTE.negocio.direccion || "—" }),
+        el("dt", { texto: "Cliente" }), el("dd", { texto: LOTE.nombre.trim() || "—" }),
+      ])]),
+      el("span", { clase: "lbl", texto: "Displays activados" }),
+      el("ul", { clase: "lista" }, LOTE.hecho.map((f) => el("li", {}, [el("span", { clase: "folio sm", texto: f })]))),
+      el("button", { type: "button", clase: "btn s", on: { click: () => { LOTE.folios = []; LOTE.ventaId = null; LOTE.hecho = null; ir("#/lote/actual"); } } }, ["Agregar más a este negocio"]),
+      el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { LOTE = null; ir("#/hoy"); } } }, ["Terminar"]),
+    ];
+  }
+
+  async function pLote(sub) {
+    const paso = (sub && sub[0]) || "";
+    if (paso === "nuevo") return pantallaLoteNuevo();
+    if (paso === "actual") return pantallaLoteActual();
+    if (paso === "cobro") return pantallaLoteCobro();
+    if (paso === "listo") return pantallaLoteListo();
+    ir("#/varios");
+    return null;
   }
 
   // Mi desempeño ("Tu mes"): displays que Bien Visto confirmó como entregados este mes.
@@ -2231,11 +2415,11 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     if (!d) return null;
     const grupos = new Map();
     for (const x of (d.displays || []).filter((y) => y.estado === "activo" && y.negocio_asignado)) {
-      const g = grupos.get(x.negocio_asignado) || { nombre: x.negocio_asignado, direccion: x.direccion || "", n: 0 };
+      const g = grupos.get(x.negocio_asignado) || { nombre: x.negocio_asignado, direccion: x.direccion || "", enlace: x.url_destino || "", n: 0 };
       g.n += 1;
       grupos.set(x.negocio_asignado, g);
     }
-    const filas = [...grupos.values()].map((g) => el("button", { type: "button", clase: "li", on: { click: () => ir("#/lote") } }, [
+    const filas = [...grupos.values()].map((g) => el("button", { type: "button", clase: "li", on: { click: () => { LOTE = nuevoLote({ nombre: g.nombre, direccion: g.direccion, enlace_resena: g.enlace }); ir("#/lote/actual"); } } }, [
       el("span", { clase: "grow" }, [
         el("span", { clase: "t", texto: g.nombre }),
         el("span", { clase: "m", texto: (g.direccion || "Sin dirección") + " · " + g.n + (g.n === 1 ? " display" : " displays") }),
@@ -2252,7 +2436,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
           " en la misma venta, en lugar de " + dinero(PROMO_N * PRECIO_DISPLAY) + ". Tu comisión sigue siendo " + dinero(COMISION_DISPLAY) + " por display.",
         ]),
       ]),
-      el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/lote") } }, ["Negocio nuevo"]),
+      el("button", { type: "button", clase: "btn p", on: { click: () => { LOTE = null; ir("#/lote/nuevo"); } } }, ["Negocio nuevo"]),
       ...(filas.length ? [el("span", { clase: "lbl", texto: "Sucursales de tus clientes" }), el("div", { clase: "lista-filas" }, filas)] : []),
     ]);
   }
