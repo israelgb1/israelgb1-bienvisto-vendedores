@@ -71,11 +71,11 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 .hmb{width:auto;margin:0;padding:0 14px;height:46px;border-radius:14px;background:var(--verde);color:var(--crema);font-size:16px;display:flex;align-items:center;gap:8px}
 .hmb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}
 #app{flex:1;padding:14px 16px 110px;overflow-x:hidden}
-#app h2{font:600 28px/34px var(--fd);margin:6px 0 14px;color:var(--tinta);letter-spacing:-.015em}
-.sub{font-size:16px;color:var(--muted);margin:0 0 14px}
+#app h2{font:700 26px/1.1 var(--fd);margin:6px 0 4px;color:var(--tinta);letter-spacing:-.015em}
+.sub{font-size:16.5px;color:var(--muted);margin:0 0 14px}
 .tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;display:flex;background:#fff;border-top:1px solid var(--borde);z-index:10;padding-bottom:env(safe-area-inset-bottom,0px)}
 .tabs button{flex:1;width:auto;margin:0;padding:8px 0 10px;border-radius:0;background:transparent;color:var(--muted);font:600 14px/1.15 var(--fb);display:flex;flex-direction:column;align-items:center;gap:3px;min-height:64px}
-.tabs button[aria-current="page"]{color:var(--verde);box-shadow:inset 0 3px 0 var(--verde)}
+.tabs button[aria-current="page"]{color:var(--verde);box-shadow:inset 0 3px 0 var(--verde);background:#F1F7F4}
 .tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .btn{width:100%;min-height:52px;padding:14px 24px;margin:0 0 12px;border-radius:999px;border:2px solid transparent;font:600 17px/20px var(--fb);display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .08s}
 .btn:active{transform:scale(.98)}
@@ -84,10 +84,11 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 .btn.s{background:transparent;color:var(--tinta);border-color:var(--borde-s)}
 .btn.sm{width:auto;min-height:44px;padding:10px 18px;font-size:15px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
-.venta{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--verde);color:var(--crema);border-radius:20px;padding:18px;margin:0 0 12px;border:0;min-height:88px;font-weight:400}
-.venta .vi{width:56px;height:56px;border-radius:50%;background:var(--ambar);display:grid;place-items:center;flex:none}
-.venta .vi svg{width:28px;height:28px}
-.venta .vt b{display:block;font:600 22px/1.15 var(--fd)}
+.venta{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--verde);color:var(--crema);border-radius:20px;padding:14px 16px;margin:8px 0 8px;border:0;min-height:84px;font-weight:400;box-shadow:0 4px 0 var(--tinta)}
+.venta:active{transform:translateY(2px);box-shadow:0 2px 0 var(--tinta)}
+.venta .vi{width:50px;height:50px;border-radius:50%;background:var(--ambar);display:grid;place-items:center;flex:none}
+.venta .vi svg{width:30px;height:30px;stroke:var(--tinta)}
+.venta .vt b{display:block;font:600 22px/1.2 var(--fd)}
 .venta .vt span{display:block;font-size:14px;opacity:.92;margin-top:2px}
 .hero{background:var(--verde);color:var(--crema);border-radius:20px;padding:18px;margin:0 0 12px}
 .hero .lbl{color:var(--crema);opacity:.9}
@@ -133,9 +134,33 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 .barra{height:10px;border-radius:999px;background:var(--menta);overflow:hidden;margin:6px 0 10px}
 .barra i{display:block;height:100%;background:var(--verde);border-radius:999px}
 a.btn{text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center}
-.seg{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;padding:2px 0 4px}
-.seg button{width:auto;min-height:40px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid var(--borde);font:600 14px/1 var(--fb);color:var(--tinta);white-space:nowrap;flex:none}
-.seg button[aria-pressed="true"]{background:var(--verde);color:var(--crema);border-color:var(--verde)}
+.seg{display:flex;gap:6px;overflow-x:auto;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{width:auto;min-height:40px;padding:8px 14px;border-radius:999px;background:transparent;border:2px solid var(--borde-s);font:600 14px/1 var(--fb);color:var(--tinta);white-space:nowrap;flex:none;margin:0}
+.seg button[aria-pressed="true"]{background:var(--tinta);border-color:var(--tinta);color:var(--crema)}
+/* Mockup: listas de filas, tarjetas de acceso rápido, campos */
+.li{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--borde);width:100%;text-align:left;min-height:60px;background:transparent;color:var(--tinta);font-weight:400;margin:0;border-top:0;border-left:0;border-right:0;border-radius:0}
+.lista-filas{list-style:none;padding:4px 14px;margin:0 0 12px;background:#fff;border:1px solid var(--borde);border-radius:16px}
+.li:last-child{border-bottom:0}
+.li .folio{flex:none;min-width:64px}
+.li .grow{flex:1;min-width:0}
+.li .t{display:block;font-weight:600;line-height:1.25;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .m{display:block;font-size:14.5px;color:var(--muted);line-height:1.3}
+.li .chip{flex:none}
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 14px}
+.mini button{background:#fff;border:2px solid var(--borde);border-radius:18px;padding:12px 14px;text-align:left;min-height:72px;color:var(--tinta);margin:0;width:100%}
+.mini button b{display:block;font-size:16px;line-height:1.2;margin-bottom:2px;font-weight:600}
+.mini button span{display:block;font-size:14.5px;color:var(--muted)}
+.mini button.alerta{border-color:var(--ambar);background:#FFF3D6}
+.btn.s.qr{margin:18px 0 14px}
+.btn.s.qr svg{width:24px;height:24px;flex:none;fill:none;stroke:var(--verde);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#app input{min-height:48px;border:2px solid var(--borde-s);border-radius:8px;padding:10px 14px;font-size:17px}
+#app input:focus{outline:3px solid var(--ambar);outline-offset:0;border-color:var(--tinta)}
+.helpl{display:block;width:auto;margin:14px auto 0;padding:10px 0;min-height:44px;background:none;color:var(--verde);font-size:15px;font-weight:600;text-decoration:underline;text-underline-offset:3px;border:0;text-align:center}
+.bk{width:auto;height:46px;margin:0;padding:0 16px 0 10px;border-radius:14px;background:#fff;color:var(--verde);border:2px solid var(--verde);font:600 17px/1 var(--fb);display:flex;align-items:center;gap:4px;flex:none}
+.bk svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.bk:hover{background:var(--verde);color:#fff}
+h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
 .resultados{max-height:260px;overflow-y:auto;margin:4px 0 12px;padding:2px 2px 0 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 
 .drawer-in{background:var(--crema);width:88%;max-width:340px;height:100%;padding:16px 14px 20px;overflow-y:auto}
@@ -191,7 +216,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 
   <section id="paso-sesion" class="paso" hidden>
     <header class="bar">
-      <button type="button" id="btn-atras" class="bk" hidden>&larr; Atrás</button>
+      <button type="button" id="btn-atras" class="bk" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Atrás</button>
       <a href="#/hoy" aria-label="Ir al inicio" style="display:inline-flex;line-height:0"><svg class="iso" viewBox="0 41 311 203" aria-hidden="true" focusable="false"><path fill="#0E6B5C" d="M62 163 L62 78 A16 16 0 0 0 30 78 L30 163 A16 16 0 0 0 62 163 Z"/><path fill="#0E6B5C" fill-rule="evenodd" d="M30 163 A59 59 0 1 1 148 163 A59 59 0 1 1 30 163 Z M62 163 A27 27 0 1 0 116 163 A27 27 0 1 0 62 163 Z"/><path fill="#F2A71B" d="M159.53 150 L197.35 215.5 A15 15 0 0 0 223.33 215.5 L298.96 84.5 A15 15 0 0 0 272.98 69.5 L210.34 178 L185.51 135 A15 15 0 0 0 159.53 150 Z"/></svg></a>
       <span class="grow"></span>
       <button type="button" id="btn-menu" class="hmb" aria-haspopup="dialog" aria-controls="cajon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Menú</button>
@@ -349,10 +374,11 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
   const enc = (s) => encodeURIComponent(s);
   const WA_AYUDA = "https://wa.me/522201435851?text=" + encodeURIComponent("Hola, soy vendedor de Bien Visto y necesito ayuda con mi panel.");
   const ESTADOS = {
-    libre: ["Libre", "g"], activo: ["Activo", "v"], retirado: ["Retirado", "r"], prueba: ["En prueba", ""],
+    libre: ["Libre", ""], activo: ["Activo", "v"], retirado: ["Retirado", "g"], prueba: ["En prueba", ""],
     pendiente: ["Pendiente", ""], rev: ["En revisión", ""], cobrada: ["Cobrada", "v"],
     entregada: ["Entregada", "v"], anulada: ["Anulada", "r"],
   };
+  const ICONO_QR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M8 12h8"/></svg>';
   const ICONO_NFC = '<svg viewBox="0 0 24 24" fill="none" stroke="#12302B" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1.4" fill="#12302B"/><path d="M10 8.5a5 5 0 0 1 0 7M13.5 5.8a9 9 0 0 1 0 12.4M17 3.2a13 13 0 0 1 0 17.6"/></svg>';
 
   let nombreVend = "";
@@ -382,9 +408,9 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     return t.content.firstChild;
   }
 
-  function chip(estado) {
+  function chip(estado, textoFijo, claseFija) {
     const [txt, cls] = ESTADOS[estado] || [estado, "g"];
-    return el("span", { clase: ("chip " + cls).trim(), texto: txt });
+    return el("span", { clase: ("chip " + (claseFija !== undefined ? claseFija : cls)).trim(), texto: textoFijo || txt });
   }
 
   function campo(etiqueta, control) {
@@ -449,7 +475,8 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
       if (b.dataset.tab === pestana) b.setAttribute("aria-current", "page");
       else b.removeAttribute("aria-current");
     }
-    $("btn-atras").hidden = pantalla === "hoy";
+    // Como en el mockup: las cuatro pestañas raíz no muestran Atrás.
+    $("btn-atras").hidden = ["hoy", "varios", "displays", "saldo"].includes(pantalla);
     app.replaceChildren(el("p", { clase: "hint", texto: "Cargando…" }));
     window.scrollTo(0, 0);
     try {
@@ -619,14 +646,18 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
         el("span", { clase: "vi" }, [icono(ICONO_NFC)]),
         el("span", { clase: "vt" }, [el("b", { texto: "Vender un display" }), el("span", { texto: "Acerca tu celular al display para empezar." })]),
       ]),
-      el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/escanear") } }, ["Escanear el QR del display"]),
+      el("button", { type: "button", clase: "btn s qr", on: { click: () => ir("#/escanear") } }, [icono(ICONO_QR), "Escanear el QR del display"]),
       el("span", { clase: "lbl", texto: "¿Prefieres escribir el folio?" }),
       el("form", { novalidate: "", on: { submit: (e) => { e.preventDefault(); abrirFolio(); } } }, [folioInput]),
       el("p", { clase: "hint", texto: "Son 4 caracteres y abre solo." }),
       folioMsg,
-      el("div", { clase: "dos" }, [
-        el("div", { clase: "card" }, [el("span", { clase: "lbl", texto: "Debes entregar" }), el("b", { texto: dinero(s.custodia) }), el("span", { texto: plazo })]),
-        el("div", { clase: "card" }, [el("span", { clase: "lbl", texto: "En inventario" }), el("b", { texto: libres + (libres === 1 ? " libre" : " libres") })]),
+      el("div", { clase: "mini" }, [
+        el("button", { type: "button", clase: s.impago || s.plazo_vencido ? "alerta" : "", on: { click: () => ir("#/saldo") } }, [
+          el("b", { texto: "Debes entregar " + dinero(s.custodia) }), el("span", { texto: plazo }),
+        ]),
+        el("button", { type: "button", on: { click: () => ir("#/displays") } }, [
+          el("b", { texto: libres + (libres === 1 ? " libre" : " libres") }), el("span", { texto: "en tu inventario" }),
+        ]),
       ]),
     );
     return conAviso(nodos);
@@ -644,7 +675,7 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 
     const ESTADOS_FILTRO = [["todos", "Todos"], ["activo", "Activos"], ["prueba", "En prueba"], ["libre", "Libres"], ["retirado", "Retirados"]];
     const cuenta = (e) => (e === "todos" ? lista.length : lista.filter((x) => x.estado === e).length);
-    const ul = el("ul", { clase: "lista" });
+    const ul = el("ul", { clase: "lista-filas" });
     const botones = new Map();
     const resumen = el("p", { clase: "sub" });
     const buscar = el("input", { type: "search", placeholder: "Buscar por folio o negocio", "aria-label": "Buscar displays", value: busquedaDisplays });
@@ -656,12 +687,16 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
         (!q || x.folio.toLowerCase().includes(q) || (x.negocio_asignado || "").toLowerCase().includes(q) || (x.direccion || "").toLowerCase().includes(q))
       );
       for (const [e, b] of botones) b.setAttribute("aria-pressed", String(e === filtroDisplays));
-      resumen.textContent = lista.length + (lista.length === 1 ? " display" : " displays") + " en total · busca por folio o negocio.";
+      resumen.textContent = lista.length + " en total · busca por folio o negocio.";
       ul.replaceChildren(...visibles.map((x) =>
         el("li", {}, [
-          el("button", { type: "button", clase: "item", on: { click: () => ir("#/d/" + enc(x.folio)) } }, [
-            el("div", { clase: "fila" }, [el("span", { clase: "folio sm", texto: x.folio }), chip(x.estado)]),
-            el("span", { texto: (x.negocio_asignado || "Sin negocio asignado") + (x.prueba_min_restantes != null ? " · quedan " + x.prueba_min_restantes + " min" : "") }),
+          el("button", { type: "button", clase: "li", on: { click: () => ir("#/d/" + enc(x.folio)) } }, [
+            el("span", { clase: "folio sm", texto: x.folio }),
+            el("span", { clase: "grow" }, [
+              el("span", { clase: "t", texto: x.negocio_asignado || "Sin asignar" }),
+              el("span", { clase: "m", texto: (x.prueba_min_restantes != null ? "Prueba · quedan " + x.prueba_min_restantes + " min" : x.direccion || "En inventario") }),
+            ]),
+            chip(x.estado),
           ]),
         ])
       ));
@@ -845,19 +880,33 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
     const plazo = s.horas_restantes === null ? "No tienes ventas cobradas pendientes de entregar."
       : s.plazo_vencido ? "Tu plazo de entrega venció. Entrega lo cobrado para activar displays nuevos."
       : "Te quedan " + s.horas_restantes + " horas para entregar lo cobrado.";
+    const tope = Number(s.tope) || 0;
+    const custodia = Number(s.custodia) || 0;
+    const pct = tope > 0 ? Math.min(100, Math.round(custodia / tope * 100)) : 0;
+    const bloqueado = s.impago || s.plazo_vencido || custodia >= tope && tope > 0;
+    const [txtChip, clsChip] = bloqueado ? ["Bloqueado", "r"] : pct >= 80 ? ["Cerca del tope", ""] : ["Dentro del tope", "v"];
     const nodos = [
       el("h2", { texto: "Mi saldo" }),
+      el("p", { clase: "sub", texto: "Lo que cobraste, lo que entregas y lo que ganas." }),
       el("div", { clase: "hero" }, [
-        el("span", {}, [
-          el("span", { clase: "lbl", texto: "Debes entregar" }),
-          el("span", { clase: "grande", texto: dinero(s.custodia) }),
-          el("small", { texto: "Tu tope es " + dinero(s.tope) }),
-        ]),
+        el("span", { texto: custodia > 0 ? "Debes entregar a Bien Visto" : "Estás al corriente", style: "display:block;font-size:14px;opacity:.92" }),
+        el("span", { clase: "grande", texto: dinero(custodia) }),
+        el("span", { texto: custodia > 0 ? "Dinero de Bien Visto que cobraste tú" : "Sin dinero pendiente", style: "display:block;font-size:14px;opacity:.92" }),
       ]),
-      el("div", { clase: "tarjeta" }, [el("b", { texto: "Plazo de entrega" }), el("span", { texto: plazo })]),
     ];
     if (s.impago) nodos.push(el("div", { clase: "aviso alerta", texto: "Tienes un adeudo por impago. No puedes activar displays nuevos hasta resolverlo." }));
-    nodos.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/p/" + enc("Avisar entrega")) } }, ["Avisar entrega"]));
+    nodos.push(
+      el("div", { clase: "tarjeta" }, [
+        el("span", { clase: "lbl", texto: "Tope de custodia" }),
+        el("div", { clase: "fila", style: "margin-bottom:8px" }, [
+          el("b", { texto: dinero(custodia) + " de " + dinero(tope) }),
+          chip(null, txtChip, clsChip),
+        ]),
+        el("div", { clase: "barra", role: "img", "aria-label": pct + "% del tope" }, [el("i", { style: "width:" + pct + "%" })]),
+        el("span", { texto: plazo }),
+      ]),
+    );
+    if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/p/" + enc("Avisar entrega")) } }, ["Avisar que entregué " + dinero(custodia)]));
     return nodos;
   }
 
