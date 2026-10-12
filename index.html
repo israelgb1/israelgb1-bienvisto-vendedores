@@ -2132,33 +2132,56 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const caja = el("div", {});
 
     const pintarCliente = () => {
-      const nombre = el("input", { value: LOTE.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
-      const wa = el("input", { value: LOTE.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
-      const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
+      const errorDeCampo = () => el("p", { clase: "msg err", role: "alert", hidden: "" });
+      const mostrar = (p, m) => { p.textContent = m || ""; p.hidden = !m; return !m; };
+      const errNom = errorDeCampo();
+      const errW = errorDeCampo();
+      const errM = errorDeCampo();
+      const nombre = el("input", { id: "cli-nombre", value: LOTE.nombre, placeholder: "Nombre de quien lo recibe", maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien lo recibe" });
+      const wa = el("input", { id: "cli-wa", value: LOTE.wa, inputmode: "tel", placeholder: "33 1234 5678", maxlength: "20", "aria-label": "WhatsApp" });
+      const mail = el("input", { id: "cli-mail", value: LOTE.mail, inputmode: "email", autocapitalize: "off", spellcheck: "false", placeholder: "nombre@gmail.com", maxlength: "120", "aria-label": "Correo (opcional)" });
       nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
       wa.addEventListener("input", () => { LOTE.wa = wa.value; });
       mail.addEventListener("input", () => { LOTE.mail = mail.value; });
+
       const siguiente = () => {
-        texto(msg, "", "ok");
-        const eNombre = errNombreCliente(LOTE.nombre);
-        if (eNombre) return texto(msg, eNombre, "err");
-        const eWa = errWhatsappCliente(LOTE.wa);
-        if (eWa) return texto(msg, eWa, "err");
-        const eMail = errCorreoCliente(LOTE.mail);
-        if (eMail) return texto(msg, eMail, "err");
-        pintarNegocio();
+        const okNom = mostrar(errNom, errNombreCliente(LOTE.nombre));
+        const okW = mostrar(errW, errWhatsappCliente(LOTE.wa));
+        const okM = mostrar(errM, errCorreoCliente(LOTE.mail));
+        if (okNom && okW && okM) pintarNegocio();
+        else (!okNom ? nombre : !okW ? wa : mail).focus();
       };
+
+      const steps = el("div", { clase: "steps", "aria-hidden": "true" }, [el("i", { clase: "on" }), el("i"), el("i"), el("i")]);
       caja.replaceChildren(
-        el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
-        el("h2", { texto: "Activar varios" }),
-        el("p", { clase: "sub", texto: "Primero quién recibe. Después eliges su negocio y agregas los displays." }),
-        el("div", { clase: "tarjeta" }, [
-          campo("Nombre de quien recibe", nombre),
-          campo("WhatsApp", wa),
-          campo("Correo (opcional)", mail),
+        el("div", { clase: "row", style: "margin-bottom:6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
+        el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Primero el cliente y su negocio; después tocas los displays." }),
+        steps,
+        el("h2", { texto: "¿De quién es?" }),
+        el("p", { clase: "sub", texto: "Anota el contacto de quien recibe el display. El negocio lo eliges en el siguiente paso." }),
+        el("div", { clase: "field", style: "margin-top:14px" }, [
+          el("label", { clase: "lbl", for: "cli-nombre", texto: "Nombre" }),
+          nombre,
+          errNom,
         ]),
-        el("button", { type: "button", clase: "btn a", on: { click: siguiente } }, ["Siguiente: elegir negocio"]),
-        msg,
+        el("div", { clase: "field", style: "margin-top:14px" }, [
+          el("label", { clase: "lbl", for: "cli-wa", texto: "WhatsApp" }),
+          wa,
+          el("p", { clase: "hint", texto: "10 dígitos: lada y número, sin +52." }),
+          errW,
+        ]),
+        el("div", { clase: "field", style: "margin-top:14px" }, [
+          el("label", { clase: "lbl", for: "cli-mail" }, ["Correo ", el("span", { style: "text-transform:none;letter-spacing:0;font-weight:400", texto: "(opcional)" })]),
+          mail,
+          el("p", { clase: "hint", texto: "Si lo pones, el recibo también le llega por correo." }),
+          errM,
+        ]),
+        el("p", { clase: "hint", style: "margin:0 0 10px" }, [
+          "Al registrarlo, avisas a tu cliente que Bien Visto usará estos datos para su display y su recibo. ",
+          el("a", { href: "https://bienvisto.com.mx/aviso-de-privacidad", target: "_blank", rel: "noopener", style: "color:var(--verde);font-weight:600" }, ["Aviso de privacidad"]),
+        ]),
+        el("button", { type: "button", clase: "btn s sm", style: "margin-bottom:10px", on: { click: () => pintarNegocio() } }, ["¿Ya es cliente? Búscalo"]),
+        el("button", { type: "button", clase: "btn p", on: { click: siguiente } }, ["Siguiente"]),
       );
     };
 
