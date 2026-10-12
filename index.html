@@ -1459,6 +1459,17 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       buscar.focus();
     };
 
+    // Respuesta corta, en la misma pantalla y sin cambiar de ruta.
+    const ayudaSucursal = () => {
+      const respuesta = el("p", { clase: "hint", hidden: true, texto: "Lee la dirección en voz alta con el cliente. Si coincide con el local donde estás, es esa." });
+      const pregunta = el("button", { type: "button", clase: "helpl quiet", "aria-expanded": "false", on: { click: () => {
+        const abrir = respuesta.hidden;
+        respuesta.hidden = !abrir;
+        pregunta.setAttribute("aria-expanded", String(abrir));
+      } } }, ["¿Cómo sé que es la sucursal correcta?"]);
+      return [pregunta, respuesta];
+    };
+
     // 3 · ¿Es este?
     const pantallaConfirmar = () => {
       const p = st.negocio;
@@ -1472,6 +1483,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         el("p", { clase: "hint", texto: "El cliente ve su reseña funcionando durante 30 minutos y todavía no paga nada. Si no compra, el display queda libre y no se guarda nada." }),
         el("button", { type: "button", clase: "btn p", on: { click: () => pantallaDatos() } }, ["Ya quiere comprarlo: ir al cobro"]),
         el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => pantallaNegocio() } }, ["No es este: buscar otro"]),
+        ...ayudaSucursal(),
       );
     };
 
