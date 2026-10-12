@@ -4576,7 +4576,6 @@ var qrcode = function() {
         el("p", { clase: "hint", style: "margin:4px 0 12px", texto: "Pregúntaselo ahora, antes de irte. Después es mucho más difícil localizarlo." }),
         el("button", { type: "button", clase: "btn p", on: { click: mostrarFactura } }, ["Sí, necesita factura"]),
         el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => sinFactura("Anotado: sin factura por ahora.") } }, ["No necesita factura"]),
-        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => sinFactura("Podrás pedir la factura después desde Ventas.") } }, ["Preguntar después"]),
       );
 
       pintar(
