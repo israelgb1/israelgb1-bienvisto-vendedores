@@ -4337,7 +4337,7 @@ var qrcode = function() {
         campo("nombre", "Nombre", { placeholder: "Nombre de quien lo recibe" }),
         campo("wa", "WhatsApp", { inputmode: "tel", placeholder: "33 1234 5678" }),
         el("p", { clase: "hint", texto: "10 dígitos: lada y número, sin +52." }),
-        campo("mail", "Correo (opcional)", { inputmode: "email", autocapitalize: "off", placeholder: "nombre@gmail.com" }),
+        campo("mail", "Correo", { inputmode: "email", autocapitalize: "off", placeholder: "nombre@gmail.com" }),
         el("p", { clase: "hint", texto: "Si lo pones, el recibo también le llega por correo." }),
         el("button", { type: "button", clase: "btn a", on: { click: () => {
           const ok = ["nombre", "wa", "mail"].map((k) => validar(k)).every(Boolean);
@@ -4665,7 +4665,7 @@ var qrcode = function() {
       const errM = errorDeCampo();
       const nombre = el("input", { id: "cli-nombre", value: LOTE.nombre, placeholder: "Nombre de quien lo recibe", maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien lo recibe" });
       const wa = el("input", { id: "cli-wa", value: LOTE.wa, inputmode: "tel", placeholder: "33 1234 5678", maxlength: "20", "aria-label": "WhatsApp" });
-      const mail = el("input", { id: "cli-mail", value: LOTE.mail, inputmode: "email", autocapitalize: "off", spellcheck: "false", placeholder: "nombre@gmail.com", maxlength: "120", "aria-label": "Correo (opcional)" });
+      const mail = el("input", { id: "cli-mail", value: LOTE.mail, inputmode: "email", autocapitalize: "off", spellcheck: "false", placeholder: "nombre@gmail.com", maxlength: "120", "aria-label": "Correo" });
       nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
       wa.addEventListener("input", () => { LOTE.wa = wa.value; });
       mail.addEventListener("input", () => { LOTE.mail = mail.value; });
@@ -4697,7 +4697,7 @@ var qrcode = function() {
           errW,
         ]),
         el("div", { clase: "field", style: "margin-top:14px" }, [
-          el("label", { clase: "lbl", for: "cli-mail" }, ["Correo ", el("span", { style: "text-transform:none;letter-spacing:0;font-weight:400", texto: "(opcional)" })]),
+          el("label", { clase: "lbl", for: "cli-mail", texto: "Correo" }),
           mail,
           el("p", { clase: "hint", texto: "Si lo pones, el recibo también le llega por correo." }),
           errM,
@@ -4920,7 +4920,7 @@ var qrcode = function() {
     const pedirCliente = !LOTE.nombre.trim() || !LOTE.wa.trim();
     const nombre = el("input", { value: LOTE.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
     const wa = el("input", { value: LOTE.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
-    const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
+    const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente" });
     nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
     wa.addEventListener("input", () => { LOTE.wa = wa.value; });
     mail.addEventListener("input", () => { LOTE.mail = mail.value; });
@@ -5072,7 +5072,7 @@ var qrcode = function() {
         el("span", { clase: "lbl", texto: "Cliente" }),
         campo("Nombre de quien recibe", nombre),
         campo("WhatsApp", wa),
-        campo("Correo (opcional)", mail),
+        campo("Correo", mail),
       ]) : el("span"),
       el("span", { clase: "lbl", texto: "¿Cómo paga el cliente?" }),
       el("div", { clase: "meth", role: "group", "aria-label": "Forma de pago" }, [btnEfectivo, btnTransferencia]),
