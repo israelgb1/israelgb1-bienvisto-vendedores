@@ -787,7 +787,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const solicitud = sols && (sols.solicitudes || []).find((x) => x.folio === folio && x.estado === "pendiente")
       || sols && (sols.solicitudes || []).find((x) => x.folio === folio && x.estado === "rechazada")
       || null;
-    return { solicitud, historial: hist ? hist.estados || [] : [], escaneosDia: hist && Array.isArray(hist.escaneos_por_dia) ? hist.escaneos_por_dia : [] };
+    return { solicitud, historial: hist ? hist.estados || [] : [], escaneosDia: hist && Array.isArray(hist.escaneos_por_dia) ? hist.escaneos_por_dia : [], google: hist && hist.google ? hist.google : null };
   }
 
   async function pDetalle([folio]) {
@@ -874,6 +874,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       el("dt", { texto: "Enlace" }), el("dd", { texto: "ir.bienvisto.com.mx/" + f.folio.toLowerCase() }),
       el("dt", { texto: "Negocio" }), el("dd", { texto: f.negocio_asignado || "Sin asignar" }),
       ...(f.direccion ? [el("dt", { texto: "Dirección" }), el("dd", { texto: f.direccion })] : []),
+      ...(extra.google ? [el("dt", { texto: "Google" }), el("dd", { texto: "★ " + Number(extra.google.rating).toFixed(1) + " · " + extra.google.total_resenas + " reseñas" })] : []),
       ...(f.prueba_min_restantes != null ? [el("dt", { texto: "Prueba" }), el("dd", { texto: "Quedan " + f.prueba_min_restantes + " min" })] : []),
     ])]));
 
@@ -2143,7 +2144,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         ]),
       ]),
       el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/lote") } }, ["Negocio nuevo"]),
-      ...(filas.length ? [el("span", { clase: "lbl", texto: "Negocios con displays activos" }), el("div", { clase: "lista-filas" }, filas)] : []),
+      ...(filas.length ? [el("span", { clase: "lbl", texto: "Sucursales de tus clientes" }), el("div", { clase: "lista-filas" }, filas)] : []),
     ]);
   }
 
