@@ -747,226 +747,364 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
     return conAviso(nodos);
   }
 
+  // ===== Venta por pasos (según el mockup): folio → negocio → confirmar → datos → cobro → listo =====
+  const FOLIO_APP = /^[ABCDEFGHJKLMNPQRSTUVWXYZ][2-9][ABCDEFGHJKLMNPQRSTUVWXYZ][2-9]$/;
+  const PRECIO_DISPLAY = 350;
+  const COMISION_DISPLAY = 150;
+  const ENTREGA_DISPLAY = PRECIO_DISPLAY - COMISION_DISPLAY;
+  const DOMINIOS_TYPO = { "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gamil.com": "gmail.com", "gmail.co": "gmail.com", "gmail.con": "gmail.com", "hotmial.com": "hotmail.com", "hotmail.con": "hotmail.com", "outlok.com": "outlook.com", "outlook.con": "outlook.com", "yaho.com": "yahoo.com", "yahoo.con": "yahoo.com" };
+  const sinAcentos = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+  function errNombreCliente(v) {
+    v = String(v || "").trim().replace(/\s+/g, " ");
+    if (!v) return "Escribe el nombre de quien recibe el display.";
+    if (/\d/.test(v)) return "El nombre no lleva números. Bórralos.";
+    if (/@/.test(v)) return "Parece que escribiste un correo. Aquí va el nombre de la persona.";
+    if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+$/.test(v)) return "El nombre solo lleva letras y espacios. Quita los símbolos.";
+    if (v.length > 60) return "El nombre es demasiado largo. Escribe solo nombre y apellido.";
+    const palabras = v.split(" ").filter((x) => x.replace(/[.'-]/g, "").length);
+    if (palabras.length < 2) return "Escribe nombre y apellido. Ejemplo: Rosa Ruiz.";
+    return "";
+  }
+  function errWhatsappCliente(v) {
+    if (!String(v || "").trim()) return "Escribe el WhatsApp del cliente.";
+    if (/[a-z]/i.test(v)) return "El WhatsApp solo lleva números. Quita las letras.";
+    let d = String(v).replace(/\D/g, "");
+    if (d.length === 12 && d.startsWith("52")) d = d.slice(2);
+    if (d.length === 13 && d.startsWith("521")) d = d.slice(3);
+    if (d.length < 10) return "Le falta" + (10 - d.length === 1 ? "" : "n") + " " + (10 - d.length) + " dígito" + (10 - d.length === 1 ? "" : "s") + ": lleva " + d.length + " de 10. Revisa que incluya la lada (33, 55…).";
+    if (d.length > 10) return "Le sobra" + (d.length - 10 === 1 ? "" : "n") + " " + (d.length - 10) + " dígito" + (d.length - 10 === 1 ? "" : "s") + ": lleva " + d.length + " y deben ser 10. No hace falta el +52 ni el 1.";
+    return "";
+  }
+  function errCorreoCliente(v) {
+    v = String(v || "").trim().toLowerCase();
+    if (!v) return "";
+    const arrobas = (v.match(/@/g) || []).length;
+    if (arrobas === 0) return "Falta la @. Ejemplo: nombre@gmail.com";
+    if (/\s/.test(v)) return "El correo no lleva espacios. Bórralos.";
+    if (arrobas > 1) return "El correo tiene más de una @. Solo debe llevar una.";
+    const [usuario, dominio] = v.split("@");
+    if (!usuario) return "Falta lo que va antes de la @.";
+    if (!dominio) return "Falta lo que va después de la @, por ejemplo gmail.com.";
+    if (DOMINIOS_TYPO[dominio]) return "Parece que hay un error de dedo: ¿quisiste decir " + DOMINIOS_TYPO[dominio] + "?";
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(dominio)) return "La parte después de la @ no se ve bien. Ejemplo: gmail.com u hotmail.com";
+    if (!/^[a-z0-9._%+-]+$/.test(usuario)) return "Antes de la @ solo van letras, números, puntos o guiones. Sin acentos ni ñ.";
+    return "";
+  }
+
+  // Lectura del QR con la cámara: solo cuando el vendedor toca el botón. Si el navegador no puede leer QR, se teclea el folio.
+  async function leerQr(onFolio, onCancelar, aviso) {
+    if (!("BarcodeDetector" in window) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      aviso("Tu navegador no puede leer el QR. Escribe el folio que está impreso al pie del display.");
+      return;
+    }
+    let flujo = null;
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    const video = el("video", { playsinline: "", muted: "", autoplay: "", "aria-label": "Vista de la cámara" });
+    const parar = () => { if (flujo) flujo.getTracks().forEach((t) => t.stop()); flujo = null; };
+    try {
+      flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    } catch (_) {
+      aviso("No pudimos abrir la cámara. Revisa el permiso del navegador o escribe el folio.");
+      return;
+    }
+    video.srcObject = flujo;
+    onCancelar(() => { parar(); });
+    const tick = async () => {
+      if (!flujo) return;
+      try {
+        const codigos = await detector.detect(video);
+        for (const c of codigos) {
+          const ruta = String(c.rawValue || "").split("?")[0].split("/").filter(Boolean).pop() || "";
+          const folio = ruta.toUpperCase();
+          if (FOLIO_APP.test(folio)) { parar(); return onFolio(folio); }
+        }
+      } catch (_) { /* cuadro sin QR: seguimos leyendo */ }
+      setTimeout(tick, 300);
+    };
+    onFolio.video = video;
+    aviso(null, video);
+    video.play().catch(() => {});
+    tick();
+  }
+
   async function pVender([folioPre]) {
     const d = await getJSON("/api/vendedor/displays");
     if (!d) return null;
-    const libres = (d.displays || []).filter((x) => x.estado === "libre" || x.estado === "prueba");
-    const nodos = [el("h2", { texto: "Vender un display" })];
-    if (!libres.length) {
-      nodos.push(el("p", { clase: "hint", texto: "No tienes displays libres ni en prueba para vender." }));
-      return conAviso(nodos);
-    }
-    const msg = el("p", { clase: "msg", role: "status" });
-    let negocioElegido = null;
-    let ventaPendiente = null;
+    const displays = d.displays || [];
+    const contenedor = el("div", {});
+    const avisoGlobal = el("p", { clase: "msg", role: "status" });
+    const st = { folio: null, negocio: null, cliente: null, clientes: null, form: { nombre: "", wa: "", mail: "" }, ventaId: null, pm: "efectivo", clienteNuevo: false };
+    let parar = () => {};
     let turnoBusqueda = 0;
     let temporizador = null;
-    const resultados = el("ul", { clase: "lista resultados" });
-    const elegido = el("div", { clase: "tarjeta", hidden: "" });
-    const buscar = el("input", { placeholder: "Ej. Taquería Lupita Zapopan", maxlength: "100", autocomplete: "off", "aria-label": "Buscar negocio" });
 
-    const pintarElegido = () => {
-      elegido.replaceChildren(
-        el("b", { texto: negocioElegido.nombre }),
-        el("span", { texto: negocioElegido.direccion }),
-        el("button", { type: "button", clase: "btn s sm", on: { click: () => { negocioElegido = null; elegido.hidden = true; } } }, ["Cambiar"])
+    const cargarClientes = async () => {
+      if (st.clientes !== null) return;
+      const c = await getJSON("/api/vendedor/clientes").catch(() => null);
+      st.clientes = (c && c.clientes) || [];
+    };
+
+    const pintar = (...nodos) => { parar(); contenedor.replaceChildren(...nodos, avisoGlobal); };
+
+    const folioValido = (f) => {
+      const x = displays.find((y) => y.folio === f);
+      if (!x) return "No encontramos ese folio en tu inventario.";
+      if (x.estado === "activo") return "Ese display ya está activo. Búscalo en Mis displays.";
+      return "";
+    };
+
+    // 1 · Entrada: folio, QR o folio tecleado
+    const pantallaFolio = () => {
+      const entrada = el("input", { placeholder: "Ej. M3K7", maxlength: "4", autocomplete: "off", autocapitalize: "characters", "aria-label": "Folio del display" });
+      const msg = el("p", { clase: "msg", role: "status" });
+      const visor = el("div", {});
+      const continuar = (f) => {
+        const e = folioValido(f);
+        if (e) return texto(msg, e, "err");
+        st.folio = f;
+        pantallaNegocio();
+      };
+      pintar(
+        el("h2", { texto: "Vender un display" }),
+        el("p", { clase: "sub", texto: "Escanea el QR del display o escribe su folio." }),
+        el("button", { type: "button", clase: "btn p", on: { click: () => {
+          visor.replaceChildren();
+          leerQr(continuar, (cancelar) => { parar = cancelar; visor.append(el("button", { type: "button", clase: "btn s sm", on: { click: () => { cancelar(); visor.replaceChildren(); } } }, ["Cerrar cámara"])); }, (m, video) => {
+            if (video) { visor.prepend(video); return; }
+            texto(msg, m, "err");
+          });
+        } } }, ["Escanear el QR del display"]),
+        visor,
+        el("form", { novalidate: "", on: { submit: (e) => { e.preventDefault(); const f = entrada.value.trim().toUpperCase(); if (f.length !== 4) return texto(msg, "El folio tiene 4 caracteres.", "err"); continuar(f); } } }, [
+          el("label", { clase: "lbl", texto: "¿Prefieres escribir el folio?", for: "fol-v" }),
+          el("div", { clase: "fila" }, [entrada, el("button", { type: "submit", clase: "btn s sm" }, ["Continuar"])]),
+        ]),
+        msg,
       );
-      elegido.hidden = false;
-    };
-
-    const pintarLista = (lista) => {
-      resultados.replaceChildren();
-      for (const r of lista) {
-        resultados.append(el("li", {}, [
-          el("button", { type: "button", clase: "item", on: { click: () => {
-            negocioElegido = r;
-            resultados.replaceChildren();
-            buscar.value = r.nombre;
-            pintarElegido();
-          } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion })]),
-        ]));
+      if (folioPre && !st.folio) {
+        // llegó desde la landing con el folio: saltamos la entrada
       }
+      entrada.id = "fol-v";
     };
 
-    // Ubicación solo para esta búsqueda: no se guarda ni se envía en otra parte. Se reutiliza el resultado mientras la pantalla siga abierta.
-    let cercanosCache = null;
-    // Los mensajes de esta búsqueda van en la lista, junto al botón, no al final del formulario.
-    const avisoLista = (txto) => resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: txto })]));
-    const ubicarYBuscar = async () => {
-      const mi = ++turnoBusqueda;
-      clearTimeout(temporizador);
-      texto(msg, "", "ok");
-      if (!navigator.geolocation) return avisoLista("Tu navegador no permite usar la ubicación. Escribe el nombre del negocio.");
-      resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "Buscando negocios cerca de ti…" })]));
-      try {
-        if (!cercanosCache) {
-          const pos = await new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }));
-          const res = await fetch("/api/vendedor/buscar-cercanos?lat=" + enc(String(pos.coords.latitude)) + "&lng=" + enc(String(pos.coords.longitude)));
-          if (res.status === 401) { sesionCaducada(); return; }
+    // 2 · Negocio: búsqueda en Google Maps o ubicación
+    const pantallaNegocio = async () => {
+      await cargarClientes();
+      const resultados = el("ul", { clase: "lista resultados" });
+      const avisoLista = (txto) => resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: txto })]));
+      const pintarLista = (lista) => {
+        resultados.replaceChildren();
+        for (const r of lista) {
+          resultados.append(el("li", {}, [el("button", { type: "button", clase: "item", on: { click: () => { st.negocio = r; pantallaConfirmar(); } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion })])]));
+        }
+      };
+      const buscarNegocio = async (q) => {
+        const mi = ++turnoBusqueda;
+        avisoLista("Buscando…");
+        try {
+          const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q));
+          if (res.status === 401) return sesionCaducada();
           const datos = await res.json().catch(() => null);
           if (mi !== turnoBusqueda) return;
-          if (!res.ok) {
-            avisoLista(res.status === 404 ? "La búsqueda por ubicación todavía no está disponible. Escribe el nombre del negocio." : errorDe(datos));
-            return;
+          if (!res.ok) return avisoLista(errorDe(datos));
+          const lista = (datos && datos.resultados) || [];
+          if (!lista.length) return avisoLista("Sin resultados. Prueba con la colonia o la calle.");
+          pintarLista(lista);
+        } catch (_) {
+          if (mi === turnoBusqueda) avisoLista(MSG_ERROR_RED);
+        }
+      };
+      const ubicar = async () => {
+        if (!navigator.geolocation) return avisoLista("Tu navegador no permite usar la ubicación. Escribe el nombre del negocio.");
+        avisoLista("Buscando negocios cerca de ti…");
+        try {
+          const pos = await new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }));
+          const res = await fetch("/api/vendedor/buscar-cercanos?lat=" + enc(String(pos.coords.latitude)) + "&lng=" + enc(String(pos.coords.longitude)));
+          if (res.status === 401) return sesionCaducada();
+          const datos = await res.json().catch(() => null);
+          if (!res.ok) return avisoLista(res.status === 404 ? "La búsqueda por ubicación todavía no está disponible. Escribe el nombre del negocio." : errorDe(datos));
+          const lista = (datos && datos.resultados) || [];
+          if (!lista.length) return avisoLista("No encontramos negocios cerca de ti. Escribe el nombre del negocio.");
+          pintarLista(lista);
+        } catch (err) {
+          avisoLista(err && err.code === 1 ? "Permite el acceso a tu ubicación en el navegador, o escribe el nombre del negocio." : "No pudimos obtener tu ubicación. Escribe el nombre del negocio.");
+        }
+      };
+      const buscar = el("input", { placeholder: "Ej. Tacos La Esquina Zapopan", maxlength: "100", autocomplete: "off", "aria-label": "Buscar negocio en Google Maps" });
+      buscar.addEventListener("input", () => {
+        clearTimeout(temporizador);
+        const q = buscar.value.trim();
+        if (q.length < 3) { turnoBusqueda++; resultados.replaceChildren(); return; }
+        temporizador = setTimeout(() => buscarNegocio(q), 450);
+      });
+      const nodos = [
+        el("h2", { texto: "¿Cuál es su negocio?" }),
+        el("p", { clase: "sub", texto: "Escribe el nombre como aparece en Google Maps. Primero demuestras que funciona; los datos del cliente vienen después." }),
+      ];
+      if (st.clientes.length) nodos.push(el("button", { type: "button", clase: "btn s sm", on: { click: () => pantallaCliente() } }, ["¿Ya es cliente? Búscalo"]));
+      nodos.push(
+        el("label", { clase: "lbl", texto: "Buscar en Google Maps", for: "bus-n" }),
+        (buscar.id = "bus-n", buscar),
+        el("button", { type: "button", clase: "btn s sm", style: "margin:12px 0 12px", on: { click: ubicar } }, ["Usar mi ubicación: negocios cerca de mí"]),
+        resultados,
+      );
+      pintar(...nodos);
+      buscar.focus();
+    };
+
+    // 2b · Buscar cliente existente
+    const pantallaCliente = async () => {
+      await cargarClientes();
+      const lista = el("div", { clase: "res" });
+      const pintarClientes = (q) => {
+        const qn = sinAcentos(q).trim();
+        const r = st.clientes.filter((c) => !qn || qn.split(/\s+/).every((w) => sinAcentos(c.nombre + " " + c.empresa).includes(w)));
+        lista.replaceChildren(...r.map((c) => el("button", { type: "button", on: { click: () => { st.cliente = c; st.form = { nombre: c.nombre, wa: "", mail: "" }; pantallaNegocio(); } } }, [el("b", { texto: c.nombre }), el("span", { texto: c.empresa })])));
+        if (!r.length) lista.replaceChildren(el("p", { clase: "hint", texto: "Nadie coincide. Prueba con otra palabra o regístralo como cliente nuevo." }));
+      };
+      const buscar = el("input", { type: "search", autocomplete: "off", placeholder: "Ej. Rosa, Ruiz o Tacos", "aria-label": "Cliente o negocio" });
+      buscar.addEventListener("input", () => pintarClientes(buscar.value));
+      pintar(
+        el("h2", { texto: "Buscar cliente" }),
+        el("p", { clase: "sub", texto: "Escribe el nombre de la persona o del negocio." }),
+        buscar,
+        lista,
+        el("button", { type: "button", clase: "btn s sm", style: "margin-top:12px", on: { click: () => { st.cliente = null; st.clienteNuevo = true; pantallaNegocio(); } } }, ["Es cliente nuevo"]),
+      );
+      pintarClientes("");
+      buscar.focus();
+    };
+
+    // 3 · ¿Es este?
+    const pantallaConfirmar = () => {
+      const p = st.negocio;
+      pintar(
+        el("h2", { texto: "¿Es este?" }),
+        el("p", { clase: "sub", texto: "Confirma con el cliente: nombre y dirección." }),
+        el("div", { clase: "tarjeta" }, [el("b", { texto: p.nombre }), el("span", { texto: p.direccion })]),
+        el("div", { clase: "aviso", texto: "Cuando alguien escanee el QR o acerque su celular a " + st.folio + ", se abrirá Google Maps listo para dejar una reseña de este negocio. El enlace se crea solo." }),
+        el("button", { type: "button", clase: "btn a", style: "margin-top:12px", on: { click: () => probarDisplay() } }, ["Probar el display ahora"]),
+        el("p", { clase: "hint", texto: "El cliente ve su reseña funcionando durante 30 minutos y todavía no paga nada. Si no compra, el display queda libre y no se guarda nada." }),
+        el("button", { type: "button", clase: "btn p", on: { click: () => pantallaDatos() } }, ["Ya quiere comprarlo: ir al cobro"]),
+        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => pantallaNegocio() } }, ["No es este: buscar otro"]),
+      );
+    };
+
+    const probarDisplay = async () => {
+      const { status, datos } = await postJSON("/api/vendedor/pruebas", { folio: st.folio, negocio: st.negocio.nombre, url_resena: st.negocio.enlace_resena });
+      if (status === 200 && datos && datos.success) {
+        ventasCache = [];
+        aviso = "Prueba iniciada en " + st.negocio.nombre + " con " + st.folio + ". Tienes 30 min.";
+        ir("#/displays");
+      } else if (status !== 401) {
+        texto(avisoGlobal, errorDe(datos), "err");
+      }
+    };
+
+    // 4 · Datos del cliente
+    const pantallaDatos = () => {
+      const campos = {};
+      const avisos = {};
+      const validar = (k) => {
+        const f = { nombre: errNombreCliente, wa: errWhatsappCliente, mail: errCorreoCliente }[k];
+        const err = f(campos[k].value);
+        avisos[k].textContent = err;
+        avisos[k].hidden = !err;
+        campos[k].setAttribute("aria-invalid", err ? "true" : "false");
+        return !err;
+      };
+      const campo = (k, etiqueta, opts) => {
+        campos[k] = el("input", Object.assign({ autocomplete: "off", value: st.form[k === "nombre" ? "nombre" : k === "wa" ? "wa" : "mail"] }, opts));
+        avisos[k] = el("p", { clase: "err", role: "alert", hidden: "" });
+        campos[k].addEventListener("blur", () => { if (campos[k].value.trim()) validar(k); });
+        campos[k].addEventListener("input", () => { if (avisos[k].hidden === false) validar(k); });
+        return el("div", { clase: "campo" }, [el("label", { clase: "lbl", texto: etiqueta, for: "dato-" + k }), (campos[k].id = "dato-" + k, campos[k]), avisos[k]]);
+      };
+      pintar(
+        el("h2", { texto: "Datos del cliente" }),
+        el("p", { clase: "sub", texto: "Ya vio que funciona. Anota a quién le llegará su recibo." }),
+        campo("nombre", "Nombre", { placeholder: "Nombre de quien lo recibe" }),
+        campo("wa", "WhatsApp", { inputmode: "tel", placeholder: "33 1234 5678" }),
+        el("p", { clase: "hint", texto: "10 dígitos: lada y número, sin +52." }),
+        campo("mail", "Correo (opcional)", { inputmode: "email", autocapitalize: "off", placeholder: "nombre@gmail.com" }),
+        el("p", { clase: "hint", texto: "Si lo pones, el recibo también le llega por correo." }),
+        el("button", { type: "button", clase: "btn a", on: { click: () => {
+          const ok = ["nombre", "wa", "mail"].map((k) => validar(k)).every(Boolean);
+          if (!ok) return;
+          st.form = { nombre: campos.nombre.value.trim(), wa: campos.wa.value.trim(), mail: campos.mail.value.trim().toLowerCase() };
+          pantallaCobro();
+        } } }, ["Siguiente: cobrar " + dinero(PRECIO_DISPLAY)]),
+      );
+    };
+
+    // 5 · Cobro en efectivo
+    const pantallaCobro = () => {
+      const marca = el("input", { type: "checkbox", id: "marca-cobro" });
+      const aviso5 = el("p", { clase: "err", role: "alert", hidden: "" });
+      const activar = el("button", { type: "button", clase: "btn a", style: "margin-top:12px", on: { click: async () => {
+        if (!marca.checked) { aviso5.hidden = false; aviso5.textContent = "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(ENTREGA_DISPLAY) + "."; return; }
+        aviso5.hidden = true;
+        activar.disabled = true;
+        try {
+          if (!st.ventaId) {
+            const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, metodo: "efectivo", folios: [st.folio] });
+            if (crear.status === 401) return;
+            if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(avisoGlobal, errorDe(crear.datos), "err");
+            st.ventaId = crear.datos.id;
           }
-          cercanosCache = (datos && datos.resultados) || [];
+          const cobro = await postJSON("/api/vendedor/ventas/" + enc(st.ventaId) + "/cobro", { referencia: "", url_resena: st.negocio.enlace_resena });
+          if (cobro.status === 401) return;
+          if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
+            ventasCache = [];
+            return pantallaListo();
+          }
+          texto(avisoGlobal, errorDe(cobro.datos) + " La venta quedó pendiente: intenta de nuevo o envíala a revisión desde Ventas.", "err");
+          activar.textContent = "Reintentar activación";
+        } catch (_) {
+          texto(avisoGlobal, MSG_ERROR_RED + " La venta quedó pendiente: intenta de nuevo.", "err");
+          activar.textContent = "Reintentar activación";
+        } finally {
+          activar.disabled = false;
         }
-        if (mi !== turnoBusqueda) return;
-        if (!cercanosCache.length) {
-          avisoLista("No encontramos negocios cerca de ti. Escribe el nombre del negocio.");
-          return;
-        }
-        pintarLista(cercanosCache);
-      } catch (err) {
-        if (mi !== turnoBusqueda) return;
-        const permiso = err && err.code === 1;
-        avisoLista(permiso ? "Permite el acceso a tu ubicación en el navegador, o escribe el nombre del negocio." : "No pudimos obtener tu ubicación. Escribe el nombre del negocio.");
-      }
-    };
-    // Un solo envío a la vez: los toques extra mientras se busca se ignoran.
-    let buscandoCerca = false;
-    const usarUbicacion = async () => {
-      if (buscandoCerca) return;
-      buscandoCerca = true;
-      cercanosBtn.disabled = true;
-      try {
-        await ubicarYBuscar();
-      } finally {
-        buscandoCerca = false;
-        cercanosBtn.disabled = false;
-      }
-    };
-
-    const cercanosBtn = el("button", { type: "button", clase: "btn s sm", style: "margin:12px 0 16px", on: { click: usarUbicacion } }, ["Usar mi ubicación"]);
-
-    const buscarNegocio = async (q) => {
-      const mi = ++turnoBusqueda;
-      resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "Buscando…" })]));
-      try {
-        const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q));
-        if (res.status === 401) { sesionCaducada(); return; }
-        const datos = await res.json().catch(() => null);
-        if (mi !== turnoBusqueda) return;
-        resultados.replaceChildren();
-        if (!res.ok) { texto(msg, errorDe(datos), "err"); return; }
-        const lista = (datos && datos.resultados) || [];
-        if (!lista.length) {
-          resultados.append(el("li", {}, [el("span", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
-          return;
-        }
-        pintarLista(lista);
-      } catch (_) {
-        if (mi === turnoBusqueda) texto(msg, MSG_ERROR_RED, "err");
-      }
+      } } }, ["Activar display " + st.folio]);
+      pintar(
+        el("h2", { texto: "Cobra antes de activar" }),
+        el("p", { clase: "sub", texto: "El precio es fijo y no se puede cambiar." }),
+        el("div", { clase: "tarjeta" }, [el("b", { texto: dinero(PRECIO_DISPLAY) }), el("span", { texto: "IVA incluido · 1 display" })]),
+        el("div", { clase: "dos" }, [
+          el("div", { clase: "card" }, [el("b", { texto: dinero(COMISION_DISPLAY) }), el("span", { texto: "Tu comisión" })]),
+          el("div", { clase: "card" }, [el("b", { texto: dinero(ENTREGA_DISPLAY) }), el("span", { texto: "Entregas a Bien Visto" })]),
+        ]),
+        el("span", { clase: "lbl", texto: "¿Cómo paga el cliente?" }),
+        el("div", { clase: "tarjeta" }, [el("b", { texto: "Efectivo" }), el("span", { texto: "Cuenta el dinero frente al cliente antes de activar." })]),
+        el("label", { clase: "opcion", for: "marca-cobro" }, [marca, el("span", { texto: "Confirmo que cobré " + dinero(PRECIO_DISPLAY) + " en efectivo y me comprometo a entregar " + dinero(ENTREGA_DISPLAY) + " a Bien Visto." })]),
+        aviso5,
+        activar,
+      );
     };
 
-    buscar.addEventListener("input", () => {
-      clearTimeout(temporizador);
-      const q = buscar.value.trim();
-      if (negocioElegido && q !== negocioElegido.nombre) { negocioElegido = null; elegido.hidden = true; }
-      if (q.length < 3) { turnoBusqueda++; resultados.replaceChildren(); return; }
-      temporizador = setTimeout(() => buscarNegocio(q), 450);
-    });
+    // 6 · Listo
+    const pantallaListo = () => {
+      pintar(
+        el("h2", { texto: st.folio + " ya está activo" }),
+        el("p", { clase: "sub", texto: "Desde ahora, cada escaneo lleva a dejar una reseña de " + st.negocio.nombre + "." }),
+        el("div", { clase: "tarjeta" }, [el("b", { texto: "Debes entregar " + dinero(ENTREGA_DISPLAY) }), el("span", { texto: "Entrégalo a Bien Visto desde Mi saldo." })]),
+        el("div", { clase: "tarjeta" }, [el("b", { texto: "Pruébalo tú mismo" }), el("span", { texto: "Abre el enlace de reseña para ver lo que verá tu cliente." }), el("button", { type: "button", clase: "btn s sm", style: "margin-top:10px", on: { click: () => window.open(st.negocio.enlace_resena, "_blank", "noopener") } }, ["Abrir enlace de reseña"])]),
+        el("button", { type: "button", clase: "btn s", on: { click: () => { st.folio = null; st.ventaId = null; st.form = { nombre: "", wa: "", mail: "" }; pantallaFolio(); } } }, ["Activar otro display de este cliente"]),
+        el("button", { type: "button", clase: "btn p", style: "margin-top:8px", on: { click: () => ir("#/hoy") } }, ["Terminar"]),
+      );
+    };
 
-    const contacto = el("input", { maxlength: "120" });
-    const whatsapp = el("input", { inputmode: "tel", placeholder: "Ej. 33 1234 5678" });
-    const referencia = el("input", { maxlength: "100" });
-    const campoRef = campo("Referencia de la transferencia", referencia);
-    campoRef.hidden = true;
-    const metodo = el("select", { on: { change: () => { campoRef.hidden = metodo.value !== "transferencia"; } } }, [
-      el("option", { value: "efectivo", texto: "Efectivo" }),
-      el("option", { value: "transferencia", texto: "Transferencia" }),
-    ]);
-    const lista = el("div", { clase: "campo" }, libres.map((f) =>
-      el("label", { clase: "opcion" }, [el("input", { type: "checkbox", value: f.folio, name: "folio", checked: folioPre === f.folio }), f.folio + (f.estado === "prueba" ? " · en prueba" : "")])
-    ));
-    const enviar = el("button", { type: "button", clase: "btn p" }, ["Vender y activar"]);
-    const pruebaBtn = el("button", { type: "button", clase: "btn s" }, ["Iniciar prueba (30 min máximo)"]);
-    pruebaBtn.addEventListener("click", async () => {
-      texto(msg, "", "ok");
-      const seleccion = [...lista.querySelectorAll("input:checked")].map((i) => i.value);
-      if (!negocioElegido) return texto(msg, "Elige el negocio de la lista.", "err");
-      if (seleccion.length !== 1) return texto(msg, "Para la prueba elige un solo display.", "err");
-      pruebaBtn.disabled = true;
-      try {
-        const { status, datos } = await postJSON("/api/vendedor/pruebas", {
-          folio: seleccion[0],
-          negocio: negocioElegido.nombre,
-          url_resena: negocioElegido.enlace_resena,
-        });
-        if (status === 200 && datos && datos.success) {
-          ventasCache = [];
-          aviso = "Prueba iniciada en " + negocioElegido.nombre + " con " + datos.folio + ". Tienes 30 min.";
-          ir("#/displays");
-        } else if (status !== 401) {
-          texto(msg, errorDe(datos), "err");
-        }
-      } catch (_) {
-        texto(msg, MSG_ERROR_RED, "err");
-      } finally {
-        pruebaBtn.disabled = false;
-      }
-    });
-    enviar.addEventListener("click", async () => {
-      texto(msg, "", "ok");
-      const seleccion = [...lista.querySelectorAll("input:checked")].map((i) => i.value);
-      if (!negocioElegido) return texto(msg, "Elige el negocio de la lista.", "err");
-      if (!seleccion.length) return texto(msg, "Elige al menos un display.", "err");
-      if (metodo.value === "transferencia" && !referencia.value.trim()) return texto(msg, "La transferencia requiere referencia.", "err");
-      enviar.disabled = true;
-      try {
-        if (!ventaPendiente) {
-          const crear = await postJSON("/api/vendedor/ventas", {
-            negocio: negocioElegido.nombre,
-            contacto: contacto.value.trim(),
-            whatsapp: whatsapp.value.trim(),
-            metodo: metodo.value,
-            folios: seleccion,
-          });
-          if (crear.status === 401) return;
-          if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(msg, errorDe(crear.datos), "err");
-          ventaPendiente = crear.datos.id;
-        }
-        const cobro = await postJSON("/api/vendedor/ventas/" + enc(ventaPendiente) + "/cobro", {
-          referencia: referencia.value.trim(),
-          url_resena: negocioElegido.enlace_resena,
-        });
-        if (cobro.status === 401) return;
-        if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
-          ventasCache = [];
-          aviso = "Listo: " + cobro.datos.displays_activos + " display(s) activos para " + negocioElegido.nombre + ".";
-          ir("#/displays");
-        } else {
-          texto(msg, errorDe(cobro.datos) + " La venta quedó pendiente: intenta de nuevo o envíala a revisión desde Ventas.", "err");
-          enviar.textContent = "Reintentar activación";
-        }
-      } catch (_) {
-        texto(msg, MSG_ERROR_RED + " La venta quedó pendiente: intenta de nuevo.", "err");
-        enviar.textContent = "Reintentar activación";
-      } finally {
-        enviar.disabled = false;
-      }
-    });
-
-    nodos.push(
-      el("span", { clase: "lbl", texto: "1 · Negocio" }),
-      buscar,
-      cercanosBtn,
-      el("p", { clase: "hint", texto: "Escribe el nombre o usa tu ubicación, y elige de la lista." }),
-      resultados,
-      elegido,
-      el("span", { clase: "lbl", texto: "2 · Datos de la venta" }),
-      campo("Persona de contacto (opcional)", contacto),
-      campo("WhatsApp del negocio (opcional)", whatsapp),
-      campo("Forma de pago", metodo),
-      campoRef,
-      el("span", { clase: "lbl", texto: "3 · Displays que activas" }),
-      lista,
-      enviar,
-      pruebaBtn,
-      msg,
-    );
-    return nodos;
+    // Arranque: folio desde la landing o pantalla de entrada
+    if (folioPre) {
+      const e = folioValido(folioPre);
+      if (e) { pantallaFolio(); texto(avisoGlobal, e, "err"); }
+      else { st.folio = folioPre; pantallaNegocio(); }
+    } else {
+      pantallaFolio();
+    }
+    return [contenedor];
   }
 
   async function pVarios() {
