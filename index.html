@@ -705,6 +705,54 @@ select{width:100%;min-height:48px;padding:10px 14px;font:400 17px/24px Figtree,s
       elegido.hidden = false;
     };
 
+    const pintarLista = (lista) => {
+      resultados.replaceChildren();
+      for (const r of lista) {
+        resultados.append(el("li", {}, [
+          el("button", { type: "button", clase: "item", on: { click: () => {
+            negocioElegido = r;
+            resultados.replaceChildren();
+            buscar.value = r.nombre;
+            pintarElegido();
+          } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion })]),
+        ]));
+      }
+    };
+
+    // Ubicación solo para esta búsqueda: no se guarda ni se envía en otra parte. Se reutiliza el resultado mientras la pantalla siga abierta.
+    let cercanosCache = null;
+    const usarUbicacion = async () => {
+      const mi = ++turnoBusqueda;
+      clearTimeout(temporizador);
+      texto(msg, "", "ok");
+      if (!navigator.geolocation) return texto(msg, "Tu navegador no permite usar la ubicación. Escribe el nombre del negocio.", "err");
+      resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "Buscando negocios cerca de ti…" })]));
+      try {
+        if (!cercanosCache) {
+          const pos = await new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }));
+          const res = await fetch("/api/vendedor/buscar-cercanos?lat=" + enc(String(pos.coords.latitude)) + "&lng=" + enc(String(pos.coords.longitude)));
+          if (res.status === 401) { sesionCaducada(); return; }
+          const datos = await res.json().catch(() => null);
+          if (mi !== turnoBusqueda) return;
+          if (!res.ok) { resultados.replaceChildren(); texto(msg, errorDe(datos), "err"); return; }
+          cercanosCache = (datos && datos.resultados) || [];
+        }
+        if (mi !== turnoBusqueda) return;
+        if (!cercanosCache.length) {
+          resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "No encontramos negocios cerca de ti. Escribe el nombre del negocio." })]));
+          return;
+        }
+        pintarLista(cercanosCache);
+      } catch (err) {
+        if (mi !== turnoBusqueda) return;
+        resultados.replaceChildren();
+        const permiso = err && err.code === 1;
+        texto(msg, permiso ? "Permite el acceso a tu ubicación en el navegador, o escribe el nombre del negocio." : "No pudimos obtener tu ubicación. Escribe el nombre del negocio.", "err");
+      }
+    };
+
+    const cercanosBtn = el("button", { type: "button", clase: "btn s sm", on: { click: usarUbicacion } }, ["Usar mi ubicación"]);
+
     const buscarNegocio = async (q) => {
       const mi = ++turnoBusqueda;
       resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "Buscando…" })]));
@@ -720,16 +768,7 @@ select{width:100%;min-height:48px;padding:10px 14px;font:400 17px/24px Figtree,s
           resultados.append(el("li", {}, [el("span", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
           return;
         }
-        for (const r of lista) {
-          resultados.append(el("li", {}, [
-            el("button", { type: "button", clase: "item", on: { click: () => {
-              negocioElegido = r;
-              resultados.replaceChildren();
-              buscar.value = r.nombre;
-              pintarElegido();
-            } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion })]),
-          ]));
-        }
+        pintarLista(lista);
       } catch (_) {
         if (mi === turnoBusqueda) texto(msg, MSG_ERROR_RED, "err");
       }
@@ -800,7 +839,8 @@ select{width:100%;min-height:48px;padding:10px 14px;font:400 17px/24px Figtree,s
     nodos.push(
       el("span", { clase: "lbl", texto: "1 · Negocio" }),
       buscar,
-      el("p", { clase: "hint", texto: "Escribe el nombre y elige de la lista." }),
+      cercanosBtn,
+      el("p", { clase: "hint", texto: "Escribe el nombre o usa tu ubicación, y elige de la lista." }),
       resultados,
       elegido,
       el("span", { clase: "lbl", texto: "2 · Datos de la venta" }),
