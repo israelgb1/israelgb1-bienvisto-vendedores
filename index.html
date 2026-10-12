@@ -3964,6 +3964,21 @@ var qrcode = function() {
 
   // Tarjeta del negocio: nombre, dirección, calificación y reseñas de Google, y miniatura de la foto a la derecha.
   // Si Google no responde, la tarjeta queda solo con nombre y dirección.
+  // Versión visible del panel: sirve para confirmar qué build corre el teléfono.
+  const VERSION_PANEL = "12 oct 2026 · QR 3";
+  const pieVersion = () => el("p", { clase: "hint", style: "text-align:center;margin:14px 0 0;opacity:.65", texto: "Panel · versión " + VERSION_PANEL });
+  // Dibuja el QR de un enlace dentro de `caja`. Devuelve true si lo dibujó.
+  function pintarQr(caja, enlace) {
+    if (typeof window.qrcode !== "function") return false;
+    const q = window.qrcode(0, "M");
+    q.addData(enlace);
+    q.make();
+    caja.innerHTML = q.createSvgTag(5, 2, "Código QR para pagar", "Código QR para pagar");
+    const svg = caja.querySelector("svg");
+    if (!svg) return false;
+    svg.style.width = "220px";
+    return true;
+  }
   const tarjetaNegocio = (n) => {
     const PIN = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#0E6B5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
     const ratingLinea = el("p", { style: "margin:4px 0 0" });
@@ -4263,12 +4278,13 @@ var qrcode = function() {
       };
       const bloquearMetodo = () => { for (const b of Object.values(botonesMetodo)) b.disabled = true; };
       // Crea la venta una sola vez (pendiente); después se reutiliza para compartir o activar.
-      const asegurarVenta = async () => {
+      const asegurarVenta = async (donde = msgCobro) => {
         if (st.ventaId) return true;
         const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, correo: st.form.mail || null, metodo, direccion: st.negocio.direccion, folios: [st.folio] });
         if (crear.status === 401) return false;
         if (!(crear.status === 201 && crear.datos && crear.datos.success)) {
-          texto(msgCobro, errorDe(crear.datos), "err");
+          texto(donde, errorDe(crear.datos), "err");
+          donde.scrollIntoView({ behavior: "smooth", block: "center" });
           return false;
         }
         st.ventaId = crear.datos.id;
@@ -4276,24 +4292,36 @@ var qrcode = function() {
         return true;
       };
       const enlacePago = () => "https://ir.bienvisto.com.mx/pago/" + st.ventaId;
-      const copiarEnlace = el("button", { type: "button", clase: "btn s", on: { click: async () => {
-        if (!(await asegurarVenta())) return;
+      const msgQr = el("p", { clase: "msg", role: "status" });
+      const qrBox = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:10px" });
+      const btnQr = el("button", { type: "button", clase: "btn s", on: { click: async () => {
+        qrBox.textContent = "";
+        texto(msgQr, "Preparando el QR…", "ok");
+        if (!(await asegurarVenta(msgQr))) return;
         try {
-          await navigator.clipboard.writeText(enlacePago());
-          texto(msgCobro, "Enlace copiado. Pégalo en el WhatsApp de tu cliente.", "ok");
+          if (!pintarQr(qrBox, enlacePago())) throw new Error("qr");
+          texto(msgQr, "Pídele al cliente que escanee este código con la cámara de su teléfono.", "ok");
+          qrBox.scrollIntoView({ behavior: "smooth", block: "center" });
         } catch (_) {
-          texto(msgCobro, "No pudimos copiarlo. Enlace: " + enlacePago(), "err");
+          texto(msgQr, "No pudimos generar el QR en este navegador. Usa Compartir datos.", "err");
+          msgQr.scrollIntoView({ behavior: "smooth", block: "center" });
         }
-      } } }, ["Copiar enlace"]);
+      } } }, ["Generar QR"]);
       const compartir = el("button", { type: "button", clase: "btn p", on: { click: async () => {
-        if (!st.ventaId && !(await asegurarVenta())) return;
+        texto(msgQr, "Preparando el enlace…", "ok");
+        if (!st.ventaId && !(await asegurarVenta(msgQr))) return;
+        texto(msgQr, "", "ok");
         const texto2 = "Paga tu display Bien Visto aquí: " + enlacePago();
-        if (!navigator.share) return copiarEnlace.click();
+        if (!navigator.share) {
+          texto(msgQr, "Tu navegador no abre el menú de compartir. Te muestro el QR para que lo escanee el cliente.", "ok");
+          return btnQr.click();
+        }
         try {
           await navigator.share({ title: "Datos para pagar", text: texto2 });
         } catch (err) {
           if (err && err.name === "AbortError") return;
-          copiarEnlace.click();
+          texto(msgQr, "No se pudo abrir el menú de compartir. Te muestro el QR para que lo escanee el cliente.", "err");
+          btnQr.click();
         }
       } } }, ["Compartir datos"]);
 
@@ -4327,7 +4355,9 @@ var qrcode = function() {
               el("dt", { texto: "Tipo" }), el("dd", { texto: cuentaVigente.tipo }),
             ]),
           ]),
-          el("div", { clase: "dos" }, [compartir, copiarEnlace]),
+          el("div", { clase: "dos" }, [compartir, btnQr]),
+          msgQr,
+          qrBox,
           el("p", { clase: "hint", texto: "Tu cliente abre el enlace y ve estos datos para pagar el monto exacto." }),
           el("label", { clase: "lbl", for: "rastreo-cobro", texto: "Clave de rastreo (opcional)" }),
           rastreo,
@@ -4385,6 +4415,7 @@ var qrcode = function() {
         aviso5,
         msgCobro,
         activar,
+        pieVersion(),
       );
       sincronizar();
     };
@@ -4856,26 +4887,22 @@ var qrcode = function() {
     // Librería de QR (MIT) desde jsDelivr; se carga solo cuando el vendedor la pide.
     // La librería QR va incluida en la página (ver arriba): no depende de ningún CDN.
     const btnQr = el("button", { type: "button", clase: "btn s", on: { click: async () => {
-      texto(msgQr, "", "ok");
-      if (!(await crearVentaLote(msgQr))) return;
       qrBox.textContent = "";
+      texto(msgQr, "Preparando el QR…", "ok");
+      if (!(await crearVentaLote(msgQr))) return;
       try {
-        if (typeof window.qrcode !== "function") throw new Error("qr");
-        const q = window.qrcode(0, "M");
-        q.addData(enlacePago());
-        q.make();
-        qrBox.innerHTML = q.createSvgTag(5, 2, "Código QR para pagar", "Código QR para pagar");
-        const svg = qrBox.querySelector("svg");
-        if (svg) svg.style.width = "220px";
+        if (!pintarQr(qrBox, enlacePago())) throw new Error("qr");
+        texto(msgQr, "Pídele al cliente que escanee este código con la cámara de su teléfono.", "ok");
         qrBox.scrollIntoView({ behavior: "smooth", block: "center" });
       } catch (_) {
-        texto(msgQr, "No pudimos generar el QR. Recarga la página e intenta de nuevo.", "err");
+        texto(msgQr, "No pudimos generar el QR en este navegador. Usa Compartir datos.", "err");
         msgQr.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     } } }, ["Generar QR"]);
     const compartir = el("button", { type: "button", clase: "btn p", on: { click: async () => {
-      texto(msgQr, "", "ok");
+      texto(msgQr, "Preparando el enlace…", "ok");
       if (!(await crearVentaLote(msgQr))) return;
+      texto(msgQr, "", "ok");
       const textoEnlace = "Paga tu display Bien Visto aquí: " + enlacePago();
       if (!navigator.share) {
         texto(msgQr, "Tu navegador no abre el menú de compartir. Te muestro el QR para que lo escanee el cliente.", "ok");
@@ -4967,6 +4994,7 @@ var qrcode = function() {
       pregunta,
       respuesta,
       msg,
+      pieVersion(),
     ];
   }
 
