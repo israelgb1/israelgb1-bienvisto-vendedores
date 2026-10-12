@@ -3417,6 +3417,114 @@ var qrcode = function() {
     hoja.querySelector(".hoja-top button").focus();
   }
 
+  // Avisar entrega: hoja sobre Mi saldo. El vendedor dice cuánto entregó y cómo.
+  // Bien Visto lo confirma y te manda el comprobante; el saldo no cambia hasta entonces.
+  function abrirAvisarEntrega(custodiaInicial) {
+    const custodia = Math.round((Number(custodiaInicial) || 0) * 100) / 100;
+    const cerrar = () => { hoja.remove(); document.removeEventListener("keydown", alTeclear); };
+    // Escape cierra solo la hoja de arriba (si se abrió otra encima, no la cierra también).
+    const alTeclear = (e) => { if (e.key === "Escape" && [...document.querySelectorAll(".hoja-fondo")].pop() === hoja) cerrar(); };
+    const cuerpo = el("div", { clase: "hoja-cuerpo" });
+    const hoja = el("div", { clase: "hoja-fondo", on: { click: (e) => { if (e.target === hoja) cerrar(); } } }, [
+      el("section", { clase: "hoja", role: "dialog", "aria-modal": "true", "aria-labelledby": "hoja-aviso-t" }, [
+        el("div", { clase: "hoja-top" }, [
+          el("h2", { id: "hoja-aviso-t", texto: "Avisar entrega" }),
+          el("button", { type: "button", clase: "btn s sm", on: { click: cerrar } }, ["Cerrar"]),
+        ]),
+        cuerpo,
+      ]),
+    ]);
+    document.body.append(hoja);
+    document.addEventListener("keydown", alTeclear);
+
+    const aviso = el("p", { clase: "msg", role: "status" });
+    const montoIn = el("input", { type: "number", inputmode: "decimal", min: "1", max: String(custodia), step: "0.01", value: String(custodia), "aria-label": "Monto que entregas ahora" });
+    const montoActual = () => Math.round((Number(montoIn.value) || 0) * 100) / 100;
+    const refIn = el("input", { placeholder: "Ej. M3K7QW9R2X", maxlength: "100", autocapitalize: "characters", spellcheck: "false", "aria-label": "Clave de rastreo" });
+    const refBloque = el("div", { hidden: "" }, [
+      el("span", { clase: "lbl", texto: "Clave de rastreo" }),
+      refIn,
+      el("p", { clase: "hint", texto: "La encuentras en el comprobante de tu banco." }),
+      el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => abrirDatosPago(montoActual()) } }, ["Ver y copiar datos de Bien Visto"]),
+    ]);
+
+    let metodo = "efectivo";
+    let archivo = null;
+    const botonesMetodo = {};
+    const sincronizar = () => {
+      for (const [k, b] of Object.entries(botonesMetodo)) b.setAttribute("aria-pressed", String(k === metodo));
+      refBloque.hidden = metodo !== "transferencia";
+    };
+    const seg = el("div", { clase: "meth", role: "group", "aria-label": "Cómo entregas" }, [["efectivo", "Efectivo en mano", ICONO_EFECTIVO], ["transferencia", "Depósito o transferencia", ICONO_TRANSFERENCIA]].map(([k, t, ic]) => {
+      const b = el("button", { type: "button", on: { click: () => { metodo = k; sincronizar(); } } }, [icono(ic), t]);
+      botonesMetodo[k] = b;
+      return b;
+    }));
+    sincronizar();
+
+    const textoFoto = "Sin foto. Puedes agregarla ahora o después.";
+    const fotoNombre = el("p", { clase: "hint", role: "status", texto: textoFoto });
+    const elegido = (lista) => {
+      archivo = lista && lista[0] ? lista[0] : null;
+      fotoNombre.textContent = archivo ? "Comprobante listo: " + archivo.name : textoFoto;
+    };
+    const entradaCamara = el("input", { type: "file", accept: "image/*", capture: "environment", hidden: "", on: { change: () => elegido(entradaCamara.files) } });
+    const entradaGaleria = el("input", { type: "file", accept: "image/*,application/pdf", hidden: "", on: { change: () => elegido(entradaGaleria.files) } });
+
+    const enviar = el("button", { type: "button", clase: "btn p", on: { click: async () => {
+      const monto = montoActual();
+      if (!(monto > 0) || monto > custodia + 0.001) return texto(aviso, "El monto debe ser mayor que cero y no más de " + dinero(custodia) + ".", "err");
+      const referencia = refIn.value.trim();
+      if (metodo === "transferencia" && !referencia) return texto(aviso, "Escribe la clave de rastreo de la transferencia.", "err");
+      enviar.disabled = true;
+      texto(aviso, "Enviando aviso…", "ok");
+      try {
+        const { status, datos } = await postJSON("/api/vendedor/avisos-entrega", { monto, metodo, referencia });
+        if (status === 401) return;
+        if (status !== 201 || !datos || !datos.success) return texto(aviso, errorDe(datos), "err");
+        let comprobanteOk = true;
+        if (archivo) {
+          const up = await fetch("/api/vendedor/avisos-entrega/" + enc(datos.id) + "/comprobante", { method: "POST", headers: { "Content-Type": archivo.type }, body: archivo }).catch(() => null);
+          comprobanteOk = !!(up && up.ok);
+        }
+        cuerpo.replaceChildren(
+          el("h2", { texto: "Aviso enviado", style: "margin:0 0 12px" }),
+          el("div", { clase: "tarjeta" }, [
+            el("b", { texto: "Entregas " + dinero(monto) + " por " + (metodo === "efectivo" ? "efectivo" : "transferencia") + "." }),
+            el("span", { texto: "Bien Visto lo confirma y te manda el comprobante. Hasta entonces, tu saldo no cambia." }),
+          ]),
+          ...(comprobanteOk ? [] : [el("div", { clase: "aviso alerta", texto: "No se pudo subir la foto del comprobante. El aviso sí quedó enviado." })]),
+          el("button", { type: "button", clase: "btn p", on: { click: () => { cerrar(); render(); } } }, ["Listo"]),
+        );
+      } catch (_) {
+        texto(aviso, MSG_ERROR_RED, "err");
+      } finally {
+        enviar.disabled = false;
+      }
+    } } }, ["Avisar entrega"]);
+
+    cuerpo.replaceChildren(
+      el("p", { clase: "hint", style: "font-size:16px", texto: "Total por entregar: " + dinero(custodia) + ". Bien Visto lo confirma y te manda el comprobante." }),
+      el("span", { clase: "lbl", texto: "Monto que entregas ahora" }),
+      montoIn,
+      el("p", { clase: "hint", texto: "Si entregas solo una parte, cámbialo: el resto sigue por entregar." }),
+      el("span", { clase: "lbl", texto: "¿Cómo lo entregas?" }),
+      seg,
+      refBloque,
+      el("span", { clase: "lbl", style: "margin-top:14px", texto: "Foto del comprobante (opcional)" }),
+      el("div", { clase: "dos" }, [
+        el("button", { type: "button", clase: "btn s", on: { click: () => entradaCamara.click() } }, ["Tomar foto"]),
+        el("button", { type: "button", clase: "btn s", on: { click: () => entradaGaleria.click() } }, ["Subir de galería"]),
+      ]),
+      fotoNombre,
+      entradaCamara,
+      entradaGaleria,
+      aviso,
+      enviar,
+    );
+    montoIn.focus();
+  }
+
   async function pSaldo() {
     const [s, v] = await Promise.all([getJSON("/api/vendedor/saldo"), getJSON("/api/vendedor/ventas").catch(() => null)]);
     if (!s) return null;
@@ -3452,7 +3560,7 @@ var qrcode = function() {
         el("span", { texto: plazo }),
       ]),
     );
-    if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => ir("#/p/" + enc("Avisar entrega")) } }, ["Avisar que entregué " + dinero(custodia)]));
+    if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => abrirAvisarEntrega(custodia) } }, ["Avisar que entregué " + dinero(custodia)]));
     if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => abrirDatosPago(custodia) } }, ["Datos de Bien Visto para transferir"]));
     nodos.push(
       el("h3", { clase: "sec-t", texto: "Tus ganancias" }),
