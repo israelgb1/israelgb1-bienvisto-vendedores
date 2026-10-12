@@ -1399,7 +1399,6 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     const marco = el("div", { clase: "frame" }, [el("i"), el("i"), el("i"), el("i"), el("div", { clase: "line" })]);
     const vf = el("div", { clase: "vf" }, [marco, msg]);
     const linterna = el("button", { type: "button", clase: "lin", "aria-pressed": "false", texto: "Linterna" });
-    linterna.hidden = true;
     const aviso = (m, mal) => {
       msg.textContent = m;
       msg.className = mal ? "mal" : "";
@@ -1426,14 +1425,19 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
         el("button", { type: "button", clase: "helpl", on: { click: () => cerrar(opts.teclear) } }, ["¿No lee? Teclea el folio"]),
       ]),
     ]);
+    const sinLuz = "Este celular no deja encender la linterna desde el navegador.";
     linterna.onclick = async () => {
-      if (!pista) return;
+      if (!pista) return aviso("La cámara todavía no está lista.", false);
+      const soporta = Boolean(pista.getCapabilities && pista.getCapabilities().torch);
+      if (!soporta) return aviso(sinLuz, false);
       const encendida = linterna.getAttribute("aria-pressed") !== "true";
       try {
         await pista.applyConstraints({ advanced: [{ torch: encendida }] });
         linterna.setAttribute("aria-pressed", String(encendida));
         ov.classList.toggle("luz", encendida);
-      } catch (_) { /* el celular no deja encender la luz */ }
+      } catch (_) {
+        aviso(sinLuz, false);
+      }
     };
     const leido = (folio) => {
       parar();
@@ -1458,7 +1462,6 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       (cancelar, track) => {
         parar = cancelar;
         pista = track || null;
-        linterna.hidden = !(pista && pista.getCapabilities && pista.getCapabilities().torch);
       },
       (m, video) => {
         if (cerrado) { if (video) video.srcObject?.getTracks().forEach((t) => t.stop()); return; }
