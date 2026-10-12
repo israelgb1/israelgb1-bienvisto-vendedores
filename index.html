@@ -785,11 +785,13 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
 
     // Ubicación solo para esta búsqueda: no se guarda ni se envía en otra parte. Se reutiliza el resultado mientras la pantalla siga abierta.
     let cercanosCache = null;
+    // Los mensajes de esta búsqueda van en la lista, junto al botón, no al final del formulario.
+    const avisoLista = (txto) => resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: txto })]));
     const usarUbicacion = async () => {
       const mi = ++turnoBusqueda;
       clearTimeout(temporizador);
       texto(msg, "", "ok");
-      if (!navigator.geolocation) return texto(msg, "Tu navegador no permite usar la ubicación. Escribe el nombre del negocio.", "err");
+      if (!navigator.geolocation) return avisoLista("Tu navegador no permite usar la ubicación. Escribe el nombre del negocio.");
       resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "Buscando negocios cerca de ti…" })]));
       try {
         if (!cercanosCache) {
@@ -798,24 +800,26 @@ body.con-tabs main{max-width:none;padding:0;margin:0}
           if (res.status === 401) { sesionCaducada(); return; }
           const datos = await res.json().catch(() => null);
           if (mi !== turnoBusqueda) return;
-          if (!res.ok) { resultados.replaceChildren(); texto(msg, errorDe(datos), "err"); return; }
+          if (!res.ok) {
+            avisoLista(res.status === 404 ? "La búsqueda por ubicación todavía no está disponible. Escribe el nombre del negocio." : errorDe(datos));
+            return;
+          }
           cercanosCache = (datos && datos.resultados) || [];
         }
         if (mi !== turnoBusqueda) return;
         if (!cercanosCache.length) {
-          resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: "No encontramos negocios cerca de ti. Escribe el nombre del negocio." })]));
+          avisoLista("No encontramos negocios cerca de ti. Escribe el nombre del negocio.");
           return;
         }
         pintarLista(cercanosCache);
       } catch (err) {
         if (mi !== turnoBusqueda) return;
-        resultados.replaceChildren();
         const permiso = err && err.code === 1;
-        texto(msg, permiso ? "Permite el acceso a tu ubicación en el navegador, o escribe el nombre del negocio." : "No pudimos obtener tu ubicación. Escribe el nombre del negocio.", "err");
+        avisoLista(permiso ? "Permite el acceso a tu ubicación en el navegador, o escribe el nombre del negocio." : "No pudimos obtener tu ubicación. Escribe el nombre del negocio.");
       }
     };
 
-    const cercanosBtn = el("button", { type: "button", clase: "btn s sm", on: { click: usarUbicacion } }, ["Usar mi ubicación"]);
+    const cercanosBtn = el("button", { type: "button", clase: "btn s sm", style: "margin:12px 0 16px", on: { click: usarUbicacion } }, ["Usar mi ubicación"]);
 
     const buscarNegocio = async (q) => {
       const mi = ++turnoBusqueda;
