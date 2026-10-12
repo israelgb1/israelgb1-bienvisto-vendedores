@@ -2124,73 +2124,93 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     return el("div", { clase: "aviso", role: "status", texto: "Agrega " + f + (f === 1 ? " display" : " displays") + " más y aplica la promoción. Los " + PROMO_N + " salen en " + dinero(PROMO_PRECIO) + " en vez de " + dinero(PROMO_N * PRECIO_DISPLAY) + "." });
   }
 
-  // Paso 1 · Negocio nuevo: negocio y cliente una sola vez.
+  // Paso 1 · Quién recibe (nombre, WhatsApp, correo). Paso 2 · El negocio, con búsqueda.
   async function pantallaLoteNuevo() {
     if (await bloqueadoParaActivar("")) return null;
     LOTE = nuevoLote(null);
     const msg = el("p", { clase: "msg", role: "status" });
-    const q = el("input", { type: "search", placeholder: "Nombre del negocio", "aria-label": "Buscar negocio", maxlength: "100" });
-    const res = el("div", { clase: "resultados" });
-    const cajaNegocio = el("div", {});
+    const caja = el("div", {});
+
+    const pintarCliente = () => {
+      const nombre = el("input", { value: LOTE.nombre, maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
+      const wa = el("input", { value: LOTE.wa, inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
+      const mail = el("input", { value: LOTE.mail, inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
+      nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
+      wa.addEventListener("input", () => { LOTE.wa = wa.value; });
+      mail.addEventListener("input", () => { LOTE.mail = mail.value; });
+      const siguiente = () => {
+        texto(msg, "", "ok");
+        const eNombre = errNombreCliente(LOTE.nombre);
+        if (eNombre) return texto(msg, eNombre, "err");
+        const eWa = errWhatsappCliente(LOTE.wa);
+        if (eWa) return texto(msg, eWa, "err");
+        const eMail = errCorreoCliente(LOTE.mail);
+        if (eMail) return texto(msg, eMail, "err");
+        pintarNegocio();
+      };
+      caja.replaceChildren(
+        el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
+        el("h2", { texto: "Activar varios" }),
+        el("p", { clase: "sub", texto: "Primero quién recibe. Después eliges su negocio y agregas los displays." }),
+        el("div", { clase: "tarjeta" }, [
+          campo("Nombre de quien recibe", nombre),
+          campo("WhatsApp", wa),
+          campo("Correo (opcional)", mail),
+        ]),
+        el("button", { type: "button", clase: "btn a", on: { click: siguiente } }, ["Siguiente: elegir negocio"]),
+        msg,
+      );
+    };
+
     const pintarNegocio = () => {
-      if (LOTE.negocio) {
-        cajaNegocio.replaceChildren(el("div", { clase: "tarjeta" }, [
+      const q = el("input", { type: "search", placeholder: "Nombre del negocio", "aria-label": "Buscar negocio", maxlength: "100" });
+      const res = el("div", { clase: "resultados" });
+      const elegido = el("div", {});
+      const pintarElegido = () => {
+        if (!LOTE.negocio) { elegido.replaceChildren(); q.hidden = false; return; }
+        q.hidden = true;
+        res.replaceChildren();
+        elegido.replaceChildren(el("div", { clase: "tarjeta" }, [
           el("span", { clase: "lbl", texto: "Negocio" }),
           el("b", { texto: LOTE.negocio.nombre }),
           el("p", { clase: "hint", texto: LOTE.negocio.direccion || "" }),
-          el("button", { type: "button", clase: "btn s sm", on: { click: () => { LOTE.negocio = null; q.value = ""; res.replaceChildren(); pintarNegocio(); } } }, ["Cambiar negocio"]),
+          el("button", { type: "button", clase: "btn s sm", on: { click: () => { LOTE.negocio = null; q.value = ""; pintarElegido(); } } }, ["Cambiar negocio"]),
         ]));
-        return;
-      }
-      cajaNegocio.replaceChildren(el("span", { clase: "lbl", texto: "Negocio" }), q, res);
-    };
-    let temporizador = null;
-    const buscarAhora = async () => {
-      const t = q.value.trim();
-      if (t.length < 3) return res.replaceChildren();
-      const r = await getJSON("/api/vendedor/buscar-negocio?q=" + enc(t)).catch(() => null);
-      if (!r) return res.replaceChildren(el("p", { clase: "hint", texto: MSG_ERROR_RED }));
-      const items = r.resultados || [];
-      res.replaceChildren(...(items.length
-        ? items.map((x) => el("button", { type: "button", clase: "item", on: { click: () => { LOTE.negocio = x; pintarNegocio(); } } }, [el("b", { texto: x.nombre }), el("span", { texto: x.direccion || "" })]))
-        : [el("p", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
-    };
-    q.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(buscarAhora, 350); });
-    pintarNegocio();
-
-    const nombre = el("input", { maxlength: "60", autocomplete: "name", "aria-label": "Nombre de quien recibe" });
-    const wa = el("input", { inputmode: "tel", maxlength: "20", "aria-label": "WhatsApp del cliente" });
-    const mail = el("input", { inputmode: "email", autocapitalize: "off", maxlength: "120", "aria-label": "Correo del cliente (opcional)" });
-    nombre.addEventListener("input", () => { LOTE.nombre = nombre.value; });
-    wa.addEventListener("input", () => { LOTE.wa = wa.value; });
-    mail.addEventListener("input", () => { LOTE.mail = mail.value; });
-
-    const continuar = () => {
-      texto(msg, "", "ok");
-      if (!LOTE.negocio) return texto(msg, "Elige el negocio.", "err");
-      const eNombre = errNombreCliente(LOTE.nombre);
-      if (eNombre) return texto(msg, eNombre, "err");
-      const eWa = errWhatsappCliente(LOTE.wa);
-      if (eWa) return texto(msg, eWa, "err");
-      const eMail = errCorreoCliente(LOTE.mail);
-      if (eMail) return texto(msg, eMail, "err");
-      ir("#/lote/actual");
+      };
+      let temporizador = null;
+      const buscarAhora = async () => {
+        const t = q.value.trim();
+        if (t.length < 3) return res.replaceChildren();
+        const r = await getJSON("/api/vendedor/buscar-negocio?q=" + enc(t)).catch(() => null);
+        if (!r) return res.replaceChildren(el("p", { clase: "hint", texto: MSG_ERROR_RED }));
+        const items = r.resultados || [];
+        res.replaceChildren(...(items.length
+          ? items.map((x) => el("button", { type: "button", clase: "item", on: { click: () => { LOTE.negocio = x; pintarElegido(); } } }, [el("b", { texto: x.nombre }), el("span", { texto: x.direccion || "" })]))
+          : [el("p", { clase: "hint", texto: "No encontramos ese negocio. Prueba con otro nombre." })]));
+      };
+      q.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(buscarAhora, 350); });
+      const continuar = () => {
+        texto(msg, "", "ok");
+        if (!LOTE.negocio) return texto(msg, "Elige el negocio.", "err");
+        ir("#/lote/actual");
+      };
+      caja.replaceChildren(
+        el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
+        el("h2", { texto: "¿De qué negocio es?" }),
+        el("p", { clase: "sub", texto: "Busca el negocio de " + LOTE.nombre.trim() + " y confírmalo." }),
+        el("span", { clase: "lbl", texto: "Negocio" }),
+        q,
+        res,
+        elegido,
+        el("button", { type: "button", clase: "btn a", on: { click: continuar } }, ["Siguiente: agregar displays"]),
+        el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => { LOTE.negocio = null; pintarCliente(); } } }, ["Atrás"]),
+        msg,
+      );
+      pintarElegido();
     };
 
-    return [
-      el("div", { clase: "fila", style: "justify-content:flex-start;margin:0 0 6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
-      el("h2", { texto: "Activar varios" }),
-      el("p", { clase: "sub", texto: "Primero el cliente y su negocio; después agregas los displays. Promoción: " + PROMO_N + " por " + dinero(PROMO_PRECIO) + " en la misma venta." }),
-      cajaNegocio,
-      el("div", { clase: "tarjeta" }, [
-        el("span", { clase: "lbl", texto: "Cliente" }),
-        campo("Nombre de quien recibe", nombre),
-        campo("WhatsApp", wa),
-        campo("Correo (opcional)", mail),
-      ]),
-      el("button", { type: "button", clase: "btn a", on: { click: continuar } }, ["Siguiente: agregar displays"]),
-      msg,
-    ];
+    pintarCliente();
+    return [caja];
   }
 
   // Paso 2 · Displays del negocio: se agregan con folio, con lista de libres o escaneando varios.
