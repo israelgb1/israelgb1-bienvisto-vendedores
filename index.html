@@ -2198,7 +2198,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
           ]
         : []),
       el("button", { type: "button", clase: vigenteCobro ? "btn s sm" : "btn p sm", style: "margin-top:10px", on: { click: () => ir("#/datos-cobro") } },
-        [vigenteCobro ? "Cambiar mi cuenta" : "Cargar mi cuenta"]),
+        [vigenteCobro ? "Solicitar cambio de cuenta" : "Cargar mi cuenta"]),
     ]);
 
     return [
@@ -2244,7 +2244,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
     ]);
     if (vig) tipo.value = vig.tipo;
     const msg = el("p", { clase: "msg", role: "status", "aria-live": "polite" });
-    const boton = el("button", { type: "submit", clase: "btn p" }, [vig ? "Enviar cambio" : "Guardar mi cuenta"]);
+    const boton = el("button", { type: "submit", clase: "btn p" }, [vig ? "Enviar solicitud" : "Guardar mi cuenta"]);
     const form = el("form", { novalidate: "", on: { submit: async (e) => {
       e.preventDefault();
       boton.disabled = true;
@@ -2277,7 +2277,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       boton,
     ]);
     return [
-      el("h2", { texto: vig ? "Cambiar mi cuenta" : "Mi cuenta de cobro" }),
+      el("h2", { texto: vig ? "Solicitar cambio de cuenta" : "Mi cuenta de cobro" }),
       el("p", { clase: "sub", texto: "Aquí recibe tu cliente el pago cuando cobras por transferencia." }),
       ...(d.pendiente ? [el("div", { clase: "aviso", texto: "Ya tienes un cambio en revisión. Si envías otro, reemplaza al anterior." })] : []),
       form,
