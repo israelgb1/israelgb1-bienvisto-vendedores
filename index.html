@@ -1636,22 +1636,115 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
       );
     };
 
-    // 5 · Cobro en efectivo
+    // 5 · Cobro: efectivo o transferencia (como en el mockup)
     const pantallaCobro = () => {
+      let metodo = "efectivo";
+      let cuentaVigente;
       const marca = el("input", { type: "checkbox", id: "marca-cobro" });
+      const etiquetaMarca = el("span", {});
       const aviso5 = el("p", { clase: "err", role: "alert", hidden: "" });
+      const msgCobro = el("p", { clase: "msg", role: "status" });
+      const rastreo = el("input", { id: "rastreo-cobro", autocapitalize: "characters", autocomplete: "off", maxlength: "100", placeholder: "Ej. 0123456789" });
+      const zona = el("div", {});
+      const botonesMetodo = {};
+      const pintarMarca = () => {
+        etiquetaMarca.textContent = metodo === "efectivo"
+          ? "Confirmo que cobré " + dinero(PRECIO_DISPLAY) + " en efectivo y me comprometo a entregar " + dinero(ENTREGA_DISPLAY) + " a Bien Visto."
+          : "Confirmo que el pago de " + dinero(PRECIO_DISPLAY) + " ya cayó en mi cuenta y me comprometo a entregar " + dinero(ENTREGA_DISPLAY) + " a Bien Visto.";
+      };
+      const bloquearMetodo = () => { for (const b of Object.values(botonesMetodo)) b.disabled = true; };
+      // Crea la venta una sola vez (pendiente); después se reutiliza para compartir o activar.
+      const asegurarVenta = async () => {
+        if (st.ventaId) return true;
+        const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, correo: st.form.mail || null, metodo, direccion: st.negocio.direccion, folios: [st.folio] });
+        if (crear.status === 401) return false;
+        if (!(crear.status === 201 && crear.datos && crear.datos.success)) {
+          texto(msgCobro, errorDe(crear.datos), "err");
+          return false;
+        }
+        st.ventaId = crear.datos.id;
+        bloquearMetodo();
+        return true;
+      };
+      const enlacePago = () => "https://ir.bienvisto.com.mx/pago/" + st.ventaId;
+      const copiarEnlace = el("button", { type: "button", clase: "btn s", on: { click: async () => {
+        if (!(await asegurarVenta())) return;
+        try {
+          await navigator.clipboard.writeText(enlacePago());
+          texto(msgCobro, "Enlace copiado. Pégalo en el WhatsApp de tu cliente.", "ok");
+        } catch (_) {
+          texto(msgCobro, "No pudimos copiarlo. Enlace: " + enlacePago(), "err");
+        }
+      } } }, ["Copiar enlace"]);
+      const compartir = el("button", { type: "button", clase: "btn p", on: { click: async () => {
+        if (!st.ventaId && !(await asegurarVenta())) return;
+        const texto2 = "Paga tu display Bien Visto aquí: " + enlacePago();
+        if (!navigator.share) return copiarEnlace.click();
+        try {
+          await navigator.share({ title: "Datos para pagar", text: texto2 });
+        } catch (err) {
+          if (err && err.name === "AbortError") return;
+          copiarEnlace.click();
+        }
+      } } }, ["Compartir datos"]);
+
+      const pintarZona = async () => {
+        if (metodo === "efectivo") {
+          zona.replaceChildren(el("div", { clase: "tarjeta" }, [el("b", { texto: "Efectivo" }), el("span", { texto: "Cuenta el dinero frente al cliente antes de activar." })]));
+          return;
+        }
+        zona.replaceChildren(el("p", { clase: "hint", texto: "Cargando tus datos…" }));
+        if (cuentaVigente === undefined) {
+          const d = await getJSON("/api/vendedor/cuenta-cobro").catch(() => null);
+          if (metodo !== "transferencia") return;
+          if (!d) return zona.replaceChildren(el("p", { clase: "msg err", role: "status", texto: MSG_ERROR_RED }));
+          cuentaVigente = d.vigente || null;
+        }
+        if (!cuentaVigente) {
+          return zona.replaceChildren(el("div", { clase: "tarjeta", role: "alert", style: "border-color:var(--danger)" }, [
+            el("b", { texto: "Aún no cargas tu cuenta" }),
+            el("span", { texto: "Sin ella no puedes cobrar por transferencia." }),
+            el("button", { type: "button", clase: "btn p sm", style: "margin-top:8px", on: { click: () => ir("#/datos-cobro") } }, ["Cargar mi cuenta"]),
+          ]));
+        }
+        zona.replaceChildren(
+          el("div", { clase: "tarjeta" }, [
+            el("span", { clase: "lbl", texto: "Tus datos de cobro" }),
+            el("dl", { clase: "kv", style: "margin:0" }, [
+              el("dt", { texto: "Titular" }), el("dd", { texto: cuentaVigente.titular }),
+              el("dt", { texto: "Banco" }), el("dd", { texto: cuentaVigente.banco }),
+              el("dt", { texto: "CLABE" }), el("dd", { texto: formatoClabe(cuentaVigente.clabe) }),
+              el("dt", { texto: "Cuenta" }), el("dd", { texto: cuentaVigente.cuenta }),
+              el("dt", { texto: "Tipo" }), el("dd", { texto: cuentaVigente.tipo }),
+            ]),
+          ]),
+          el("div", { clase: "dos" }, [compartir, copiarEnlace]),
+          el("p", { clase: "hint", texto: "Tu cliente abre el enlace y ve estos datos para pagar el monto exacto." }),
+          el("label", { clase: "lbl", for: "rastreo-cobro", texto: "Clave de rastreo (opcional)" }),
+          rastreo,
+          el("p", { clase: "hint", texto: "La encuentras en el comprobante del cliente. Puedes activar sin ella, pero antes revisa en tu banco que el dinero ya cayó." }),
+        );
+      };
+
+      const seg = el("div", { clase: "seg", role: "group", "aria-label": "Cómo paga el cliente" }, [["efectivo", "Efectivo"], ["transferencia", "Transferencia"]].map(([k, t]) => {
+        const b = el("button", { type: "button", on: { click: () => { if (st.ventaId || metodo === k) return; metodo = k; sincronizar(); } } }, [t]);
+        botonesMetodo[k] = b;
+        return b;
+      }));
+      const sincronizar = () => {
+        for (const [k, b] of Object.entries(botonesMetodo)) b.setAttribute("aria-pressed", String(k === metodo));
+        pintarMarca();
+        pintarZona();
+      };
+
       const activar = el("button", { type: "button", clase: "btn a", style: "margin-top:12px", on: { click: async () => {
         if (!marca.checked) { aviso5.hidden = false; aviso5.textContent = "Marca la casilla para activar. Es tu compromiso de entregar " + dinero(ENTREGA_DISPLAY) + "."; return; }
         aviso5.hidden = true;
         activar.disabled = true;
         try {
-          if (!st.ventaId) {
-            const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, correo: st.form.mail || null, metodo: "efectivo", direccion: st.negocio.direccion, folios: [st.folio] });
-            if (crear.status === 401) return;
-            if (!(crear.status === 201 && crear.datos && crear.datos.success)) return texto(avisoGlobal, errorDe(crear.datos), "err");
-            st.ventaId = crear.datos.id;
-          }
-          const cobro = await postJSON("/api/vendedor/ventas/" + enc(st.ventaId) + "/cobro", { referencia: "", url_resena: st.negocio.enlace_resena });
+          if (!(await asegurarVenta())) return;
+          const referencia = metodo === "transferencia" ? rastreo.value.trim().toUpperCase().replace(/\s/g, "") : "";
+          const cobro = await postJSON("/api/vendedor/ventas/" + enc(st.ventaId) + "/cobro", { referencia, url_resena: st.negocio.enlace_resena });
           if (cobro.status === 401) return;
           if (cobro.status === 200 && cobro.datos && cobro.datos.success) {
             ventasCache = [];
@@ -1666,6 +1759,7 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
           activar.disabled = false;
         }
       } } }, ["Activar display " + st.folio]);
+
       pintar(
         encabezadoPaso(3),
         el("h2", { texto: "Cobra antes de activar" }),
@@ -1676,11 +1770,14 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
           el("div", { clase: "card" }, [el("b", { texto: dinero(ENTREGA_DISPLAY) }), el("span", { texto: "Entregas a Bien Visto" })]),
         ]),
         el("span", { clase: "lbl", texto: "¿Cómo paga el cliente?" }),
-        el("div", { clase: "tarjeta" }, [el("b", { texto: "Efectivo" }), el("span", { texto: "Cuenta el dinero frente al cliente antes de activar." })]),
-        el("label", { clase: "opcion", for: "marca-cobro" }, [marca, el("span", { texto: "Confirmo que cobré " + dinero(PRECIO_DISPLAY) + " en efectivo y me comprometo a entregar " + dinero(ENTREGA_DISPLAY) + " a Bien Visto." })]),
+        seg,
+        zona,
+        el("label", { clase: "opcion", for: "marca-cobro" }, [marca, etiquetaMarca]),
         aviso5,
+        msgCobro,
         activar,
       );
+      sincronizar();
     };
 
     // 6 · Listo
