@@ -4170,14 +4170,14 @@ const AYUDA_TEXTOS={
   let PROMO_N = 3;
   let PROMO_PRECIO = 900;
   const MAX_LOTE = 50;
-  const TEXTO_CONSENT = "Acepto recibir por WhatsApp un resumen del uso de mi display cada 15 días durante 90 días, y ofertas de servicios de Bien Visto. Puedo pedir la baja en cualquier momento.";
+  const TEXTO_CONSENT = "¿Aceptas recibir, como beneficio exclusivo, gratuito y temporal, un resumen por WhatsApp del uso de tu display cada 15 días durante 90 días? También podremos escribirte con novedades de Bien Visto. Puedes pedir la baja cuando quieras.";
   // Casilla de consentimiento del seguimiento. Se marca solo si el cliente dijo que sí.
   const casillaConsent = (valor, alCambiar) => {
     const c = el("input", { type: "checkbox", id: "consent-seg", style: "flex:none;width:22px;height:22px;margin:2px 0 0;accent-color:#0E6B5C" });
     c.checked = !!valor;
     c.addEventListener("change", () => alCambiar(c.checked));
     return el("div", { style: "margin:14px 0" }, [
-      el("label", { for: "consent-seg", style: "display:flex;gap:12px;align-items:flex-start;cursor:pointer" }, [c, el("span", { texto: TEXTO_CONSENT })]),
+      el("label", { for: "consent-seg", style: "display:flex;gap:12px;align-items:flex-start;cursor:pointer" }, [c, el("span", {}, [el("b", { texto: "Pregúntale al cliente: " }), TEXTO_CONSENT])]),
       el("p", { clase: "hint", style: "margin:6px 0 0", texto: "Léeselo al cliente y marca solo si dice que sí. Sin la casilla, el display se activa igual, pero sin resúmenes." }),
     ]);
   };
