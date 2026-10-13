@@ -41,6 +41,10 @@ button.sec{background:transparent;color:var(--verde-visto);border:1px solid var(
 .msg{min-height:24px;margin:16px 0 0;font-family:Figtree,system-ui,sans-serif;font-size:16px;line-height:24px;color:var(--tinta-suave)}
 .msg.err{color:var(--error)}
 .msg.ok{color:var(--tinta-suave)}
+#google-zona{display:grid;gap:18px;margin:0 0 18px}
+#google-boton{min-height:44px;display:flex;justify-content:center}
+.separador{display:flex;align-items:center;gap:12px;margin:0;color:var(--tinta-suave);font-size:15px}
+.separador::before,.separador::after{content:"";flex:1;height:1px;background:var(--borde-fuerte)}
 .guia{margin:0 0 24px;color:var(--tinta);font-size:17px;line-height:28px}
 .guia ol{margin:8px 0 0;padding-left:20px}
 .guia li{margin:4px 0}
@@ -313,7 +317,11 @@ h3.sec-t{font:500 19px/1.2 var(--fd);margin:16px 0 6px;color:var(--tinta)}
 
   <section id="paso-correo" class="paso" hidden>
     <h1>Entra a tu<br><span class="segunda">panel.</span></h1>
-    <p class="guia">Tu panel de vendedor. Entra con el código que te enviamos por correo.</p>
+    <p class="guia">Tu panel de vendedor. Entra con tu cuenta de Google o con un código que te enviamos por correo.</p>
+    <div id="google-zona" hidden>
+      <div id="google-boton"></div>
+      <p class="separador">o con un código por correo</p>
+    </div>
     <form id="form-correo" novalidate>
       <label for="correo">Correo registrado</label>
       <input id="correo" name="correo" type="email" autocomplete="email" placeholder="Ej. nombre@correo.com" required>
@@ -2768,11 +2776,70 @@ var qrcode = function() {
     texto($("msg-correo"), "", "ok");
     mostrar("paso-correo");
     $("correo").focus();
+    prepararGoogle();
   }
 
   async function cerrarSesion() {
     try { await llamar("/api/vendedor/salir"); } catch (_) { /* se limpia igual en pantalla */ }
+    // Al salir, Google no debe volver a entrar solo.
+    if (googleListo) { try { google.accounts.id.disableAutoSelect(); } catch (_) {} }
     volverACorreo();
+  }
+
+  // ===== Entrar con Google =====
+  // Solo aparece si Bien Visto activó la entrada con Google (el servidor da el ID de cliente).
+  let googleListo = false;
+  function cargarScript(src) {
+    return new Promise((ok, mal) => {
+      const s = document.createElement("script");
+      s.src = src; s.async = true; s.onload = ok; s.onerror = mal;
+      document.head.appendChild(s);
+    });
+  }
+  async function prepararGoogle() {
+    if (googleListo) return;
+    try {
+      const r = await fetch("/api/vendedor/acceso");
+      const d = r.ok ? await r.json() : null;
+      if (!d || !d.google_client_id) return;
+      await cargarScript("https://accounts.google.com/gsi/client");
+      google.accounts.id.initialize({
+        client_id: d.google_client_id,
+        callback: alEntrarConGoogle,
+        auto_select: true,
+        cancel_on_tap_outside: true,
+        context: "signin",
+        ux_mode: "popup",
+        use_fedcm_for_prompt: true,
+      });
+      $("google-zona").hidden = false;
+      const caja = $("google-boton");
+      google.accounts.id.renderButton(caja, {
+        type: "standard", theme: "outline", size: "large", text: "continue_with",
+        shape: "pill", logo_alignment: "center", locale: "es", width: Math.min(400, caja.clientWidth || 320),
+      });
+      googleListo = true;
+      // Si ya entró antes con Google en este celular, entra solo sin tocar nada.
+      google.accounts.id.prompt();
+    } catch (_) { /* sin Google queda la entrada con código */ }
+  }
+  async function alEntrarConGoogle(resp) {
+    const msg = $("msg-correo");
+    texto(msg, "Entrando…", "ok");
+    try {
+      const { status, datos } = await llamar("/api/vendedor/google", { credential: resp && resp.credential });
+      if (status === 200 && datos && datos.success === true) {
+        texto(msg, "", "ok");
+        return mostrar("paso-sesion");
+      }
+      if (status === 403 && datos && datos.error === "no_registrado") {
+        try { google.accounts.id.disableAutoSelect(); } catch (_) {}
+        return texto(msg, "La cuenta " + datos.correo + " no está registrada como vendedor. Usa la cuenta de Google del correo que diste al registrarte, o entra con un código por correo.", "err");
+      }
+      texto(msg, MSG_ERROR_GENERAL, "err");
+    } catch (_) {
+      texto(msg, MSG_ERROR_RED, "err");
+    }
   }
 
   async function iniciar() {
@@ -2782,6 +2849,7 @@ var qrcode = function() {
     } catch (_) { /* sin conexión: mostramos la entrada */ }
     mostrar("paso-correo");
     $("correo").focus();
+    prepararGoogle();
   }
 
   $("form-correo").addEventListener("submit", pedirCodigo);
