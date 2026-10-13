@@ -3148,8 +3148,56 @@ const AYUDA_TEXTOS={
     });
   }
 
+  // Seguimiento en Inicio de lo que el vendedor pidió: en revisión mientras Bien Visto decide,
+  // y la respuesta durante 7 días o hasta que la cierre. Lo que se aplicó al instante no se avisa.
+  function notasDeSolicitudes(lista) {
+    const VENTANA_MS = 7 * 24 * 60 * 60 * 1000;
+    const CLAVE = "bv_solicitudes_cerradas";
+    const cerradas = (() => { try { return JSON.parse(localStorage.getItem(CLAVE) || "[]"); } catch (_) { return []; } })();
+    const marca = (t) => Date.parse(String(t || "").replace(" ", "T") + "Z");
+    const que = (x) => x.tipo === "anular" ? "anulación de la venta " + x.venta_id
+      : x.tipo === "cambiar" ? "cambio de negocio de " + x.folio + (x.nuevo_negocio ? " a " + x.nuevo_negocio : "")
+      : "reposición de " + x.folio;
+    const fecha = (t) => {
+      const f = new Date(marca(t));
+      return isNaN(f) ? "" : new Intl.DateTimeFormat("es-MX", { timeZone: "America/Mexico_City", day: "numeric", month: "short" }).format(f);
+    };
+    const visibles = lista.filter((x) => {
+      if (x.estado === "pendiente") return true;
+      if (x.directo || !["aprobada", "rechazada"].includes(x.estado) || cerradas.includes(x.id)) return false;
+      const t = marca(x.resolved_at);
+      return !isNaN(t) && Date.now() - t < VENTANA_MS;
+    }).slice(0, 5);
+    return visibles.map((x) => {
+      const pend = x.estado === "pendiente";
+      const ok = x.estado === "aprobada";
+      const titulo = pend ? "Solicitud en revisión"
+        : ok ? "Bien Visto aprobó tu solicitud"
+        : "Bien Visto no aprobó tu solicitud";
+      const detalle = pend ? "Pediste la " + que(x) + ". Te avisamos aquí cuando Bien Visto responda."
+        : "Tu solicitud de " + que(x) + (ok ? " quedó aprobada." : " no fue aprobada.");
+      const cuando = pend ? fecha(x.created_at) : fecha(x.resolved_at);
+      const color = ok ? "var(--verde-visto)" : pend ? "var(--ambar)" : "var(--danger)";
+      const fondo = ok ? "var(--menta)" : pend ? "#fff" : "#f7e3e1";
+      return el("div", { clase: "tarjeta", role: "status", style: "background:" + fondo + ";border-left:4px solid " + color + ";margin-bottom:12px" }, [
+        el("div", { style: "display:flex;align-items:flex-start;justify-content:space-between;gap:12px" }, [
+          el("div", { style: "min-width:0" }, [
+            el("span", { clase: "lbl", texto: titulo }),
+            el("span", { style: "display:block", texto: detalle }),
+            ...(x.estado === "rechazada" && x.motivo_rechazo ? [el("span", { style: "display:block;margin-top:6px", texto: "Motivo: " + x.motivo_rechazo })] : []),
+            ...(cuando ? [el("span", { style: "display:block;margin-top:6px;font-size:13px;color:var(--tinta-suave)", texto: (pend ? "Enviada el " : "Respondida el ") + cuando })] : []),
+          ]),
+          ...(pend ? [] : [el("button", { type: "button", "aria-label": "Cerrar mensaje", style: "flex:none;width:auto;margin:0;background:transparent;border:1px solid " + color + ";color:" + color + ";border-radius:999px;padding:6px 12px;font-weight:600", on: { click: () => {
+            try { localStorage.setItem(CLAVE, JSON.stringify([...cerradas, x.id].slice(-200))); } catch (_) {}
+            render();
+          } } }, ["Cerrar"])]),
+        ]),
+      ]);
+    });
+  }
+
   async function pHoy() {
-    const [s, d, av] = await Promise.all([getJSON("/api/vendedor/saldo"), getJSON("/api/vendedor/displays"), getJSON("/api/vendedor/avisos-entrega").catch(() => null)]);
+    const [s, d, av, sols] = await Promise.all([getJSON("/api/vendedor/saldo"), getJSON("/api/vendedor/displays"), getJSON("/api/vendedor/avisos-entrega").catch(() => null), getJSON("/api/vendedor/solicitudes").catch(() => null)]);
     if (!s || !d) return null;
     const libres = (d.displays || []).filter((x) => x.estado === "libre").length;
     const primer = nombreVend.split(" ")[0] || "";
@@ -3171,6 +3219,7 @@ const AYUDA_TEXTOS={
     const notasInicio = notasDeAvisos((av && av.avisos) || []);
     for (const n of notasInicio.confirmados) nodos.push(n);
     if (notasInicio.rechazado) nodos.push(notasInicio.rechazado);
+    nodos.push(...notasDeSolicitudes((sols && sols.solicitudes) || []));
     if (s.impago) nodos.push(el("div", { clase: "aviso alerta", texto: "Tienes un adeudo por impago. No puedes activar displays nuevos." }));
     // Pruebas activas: aviso discreto en Inicio hasta que se cumplan los 30 minutos (el servidor libera el display al vencer).
     const enPrueba = (d.displays || []).filter((x) => x.estado === "prueba" && Number(x.prueba_min_restantes) > 0);
