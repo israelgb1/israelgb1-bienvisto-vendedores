@@ -3592,14 +3592,26 @@ var qrcode = function() {
     const confirmados = avisos.filter((x) => x.estado === "confirmado" && x.resuelto_at
       && Date.now() - Date.parse(String(x.resuelto_at).replace(" ", "T") + "Z") < VENTANA_MS
       && !cerradas.includes(x.id));
+    // Fecha y hora del envío a revisión (created_at viene en UTC; se muestra en hora de México).
+    const fmtEnvio = (s) => {
+      const f = new Date(String(s).replace(" ", "T") + "Z");
+      if (isNaN(f)) return "";
+      return new Intl.DateTimeFormat("es-MX", { timeZone: "America/Mexico_City", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(f);
+    };
     for (const x of confirmados) {
-      nodos.push(el("div", { clase: "aviso", role: "status", style: "background:var(--verde-visto);color:#fff;margin-bottom:12px" }, [
+      const envio = x.created_at ? fmtEnvio(x.created_at) : "";
+      nodos.push(el("div", { clase: "tarjeta", role: "status", style: "background:var(--menta);border-color:var(--verde-visto);border-left:4px solid var(--verde-visto);margin-bottom:12px" }, [
         el("div", { style: "display:flex;align-items:flex-start;justify-content:space-between;gap:12px" }, [
-          el("div", {}, [
-            el("p", { style: "margin:0 0 4px;font-weight:700;font-size:17px", texto: "Bien Visto confirmó tu entrega de " + dinero(x.monto) + "." }),
-            el("p", { style: "margin:0", texto: "Tu saldo ya se actualizó." }),
+          el("div", { style: "display:flex;gap:10px;align-items:flex-start" }, [
+            el("span", { "aria-hidden": "true", style: "flex:none;width:26px;height:26px;border-radius:50%;background:var(--verde-visto);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px" }, ["✓"]),
+            el("div", {}, [
+              el("span", { clase: "lbl", texto: "Operación cerrada" }),
+              el("b", { texto: "Bien Visto confirmó tu entrega de " + dinero(x.monto) + "." }),
+              el("span", { texto: "Tu saldo ya se actualizó." }),
+              ...(envio ? [el("span", { style: "display:block;margin-top:6px;font-size:13px;color:var(--tinta-suave)", texto: "Aviso enviado el " + envio })] : []),
+            ]),
           ]),
-          el("button", { type: "button", "aria-label": "Cerrar mensaje", style: "flex:none;width:auto;margin:0;background:transparent;border:1px solid #fff;color:#fff;border-radius:999px;padding:6px 12px;font-size:14px", on: { click: () => {
+          el("button", { type: "button", "aria-label": "Cerrar mensaje", style: "flex:none;width:auto;margin:0;background:transparent;border:1px solid var(--verde-visto);color:var(--verde-visto);border-radius:999px;padding:6px 12px;font-size:14px", on: { click: () => {
             try { localStorage.setItem("bv_confirmaciones_cerradas", JSON.stringify([...cerradas, x.id])); } catch (_) {}
             render();
           } } }, ["Cerrar"]),
