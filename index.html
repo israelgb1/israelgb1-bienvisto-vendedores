@@ -2815,6 +2815,7 @@ var qrcode = function() {
 
   let nombreVend = "";
   let correoVend = "";
+  let nivelVend = "nuevo";
   let enPanel = false;
   let ventasCache = [];
   let aviso = null;
@@ -2913,6 +2914,7 @@ var qrcode = function() {
     app.replaceChildren(el("p", { clase: "hint", texto: "Cargando…" }));
     window.scrollTo(0, 0);
     try {
+      await actualizarPrecios();
       const nodos = await fn(r.slice(1));
       if (mi === turno && nodos) app.replaceChildren(...nodos);
     } catch (_) {
@@ -2924,8 +2926,9 @@ var qrcode = function() {
     enPanel = true;
     try {
       const d = await getJSON("/api/vendedor/yo");
-      if (d) { nombreVend = d.nombre || ""; correoVend = d.correo || ""; }
+      if (d) { nombreVend = d.nombre || ""; correoVend = d.correo || ""; nivelVend = d.nivel || "nuevo"; }
     } catch (_) { /* la pantalla muestra su propio error */ }
+    await actualizarPrecios(true);
     if (!location.hash || location.hash === "#") ir("#/hoy");
     render();
   }
@@ -2934,7 +2937,7 @@ var qrcode = function() {
   // Las cifras se llenan con {{clave}} desde las constantes de la app.
 const AYUDA_TEXTOS={
  priv:['Aviso de privacidad',[
-  ['¿Qué datos se guardan?','Nombre, WhatsApp y correo de tu cliente, solo para activar su display y mandarle su recibo y su reporte. No se venden ni se comparten. Aviso completo: bienvisto.com.mx/privacidad'],
+  ['¿Qué datos se guardan?','Nombre, WhatsApp y correo de tu cliente, solo para activar su display y mandarle su recibo por correo. No se venden ni se comparten. Aviso completo: bienvisto.com.mx/privacidad'],
   ['¿Qué le digo al cliente?','Que Bien Visto guarda su nombre y contacto para su display y su recibo, y que puede pedir que los borren escribiendo a soporte.']]],
  hoy:['Activar un display',[
   ['¿Cómo abro un display?','Acerca la parte de arriba de tu celular al ícono NFC del display, o escanea su QR con la cámara. Si está libre, se abre directo el formulario.'],
@@ -2942,7 +2945,7 @@ const AYUDA_TEXTOS={
   ['Mi celular no tiene NFC','Toca «Escanear QR» aquí en el panel. Es mejor que usar la cámara del celular, porque no te saca de tu sesión.'],
   ['¿Dónde está el folio?','Son 4 caracteres impresos al pie del display y en la etiqueta de abajo. Ejemplo: X4W3.']]],
  act1:['Datos del cliente',[
-  ['¿Qué WhatsApp y correo pongo?','Los de la persona que recibe el display y el reporte mensual: normalmente el dueño o el encargado.'],
+  ['¿Qué WhatsApp y correo pongo?','Los de la persona que recibe el display: normalmente el dueño o el encargado. Al correo le llega su recibo.'],
   ['El cliente ya tiene otro display','Toca «¿Ya es cliente? Búscalo» y encuéntralo por su nombre o por el de su negocio. Así no se duplica.']]],
  cl:['Buscar cliente',[
   ['¿Cómo lo encuentro?','Escribe parte del nombre de la persona (Rosa), del apellido (Ruiz) o del negocio (Tacos). No importan acentos ni mayúsculas.'],
@@ -2960,15 +2963,14 @@ const AYUDA_TEXTOS={
  pago:['Cobro y activación',[
   ['¿Qué pasa si activo sin cobrar?','Al activar te comprometes a entregar {{E}} a Bien Visto por cada display, hayas cobrado o no. Si el cliente no pagó, ese dinero lo pones tú y no ganas la comisión de esa venta.'],
   ['¿Cuándo uso transferencia?','Cuando el cliente te paga a tu CLABE (la que cargaste en «Mis datos de cobro»). Revisa en tu banco que el dinero ya cayó antes de activar; la clave de rastreo ayuda, pero no sustituye a tu banco.'],
-  ['¿Cómo le mando mis datos al cliente?','Con «Transferencia» elegida, toca «Enviar datos por WhatsApp». El cliente recibe al momento tu titular, banco, CLABE, número de cuenta y tipo de cuenta, con el monto. Se manda desde el WhatsApp de Bien Visto, no desde tu número. Tus datos los cargas una vez en «Mis datos de cobro».'],
+  ['¿Cómo le mando mis datos al cliente?','Con «Transferencia» elegida, toca «Enviar datos por WhatsApp». Se abre tu WhatsApp con un mensaje listo: tu titular, banco, CLABE, número de cuenta y el monto. Elige el chat del cliente y envíalo. Tus datos los cargas una vez en «Mis datos de cobro».'],
   ['¿Puedo cambiar el precio?','No. Es fijo: {{P}} con IVA incluido. Solo cambia con la promoción: {{PN}} displays en la misma venta cuestan {{PP}}. El cliente lo ve en su recibo.'],
   ['¿Cómo funciona la promoción de {{PN}} por {{PP}}?','Si el mismo cliente compra {{PN}} displays en la misma venta, paga {{PP}} en vez de {{PSUM}}. Tu comisión sigue siendo {{C}} por display ({{PCOM}} en total) y entregas {{PENT}} a Bien Visto. El descuento lo absorbe Bien Visto. Con {{EXN}} displays serían 2 promociones ({{EXP}}); con {{EYN}}, una promoción más uno de {{P}}. Cuentan los displays de la misma venta, de cualquier tipo.']]],
  saldo:['Mi saldo',[
   ['¿Cómo se calcula mi saldo?','Sumas los {{E}} de cada venta que cobraste tú (efectivo o transferencia) y aún no entregaste. Tu comisión de {{C}} ya la retuviste al cobrar, así que Bien Visto no te debe nada.'],
-  ['¿Qué es el tope?','Es el máximo de dinero de Bien Visto que puedes tener contigo: {{TM}} o {{H}} horas, lo que ocurra primero. Si eres vendedor nuevo, arrancas con {{TN}} y subes a {{TM}} cuando Bien Visto confirma tu primera entrega. Al llegar, el panel no te deja activar más displays hasta que entregues.'],
-  ['¿Qué es el ajuste a mi favor?','Si Bien Visto anula una venta que ya habías entregado, esos {{E}} se te descuentan de tu siguiente entrega. Tú le devuelves su dinero al cliente.'],
+  ['¿Qué es el tope?','Es el máximo de dinero de Bien Visto que puedes tener contigo: {{TM}} o {{H}} horas, lo que ocurra primero. Si eres vendedor nuevo, arrancas con {{TN}} y subes a {{TM}} cuando Bien Visto confirma una entrega que deja tu saldo en cero. Al llegar, el panel no te deja activar más displays hasta que entregues.'],
   ['¿Qué es un adeudo?','Si pasas el plazo de entrega y no avisas, Bien Visto puede retirar esos displays por impago. Los {{E}} de cada uno quedan como adeudo y no puedes activar más hasta liquidarlo o devolver los displays.'],
-  ['¿Cómo entrego?','En mano a Bien Visto o por depósito o transferencia a su cuenta. Toca «Avisar que entregué». Si fue depósito o transferencia, adjunta una foto del comprobante (tómala ahí mismo o súbela de tu galería). Cuando Bien Visto lo confirma, tu saldo baja y te llega un comprobante.']]],
+  ['¿Cómo entrego?','En mano a Bien Visto o por depósito o transferencia a su cuenta. Toca «Avisar que entregué». Si fue depósito o transferencia, adjunta una foto del comprobante (tómala ahí mismo o súbela de tu galería). Cuando Bien Visto lo confirma, tu saldo baja y te llega un comprobante por correo por cada venta que quede entregada completa.']]],
  bloqueo:['Entrega para seguir',[
   ['¿Por qué no me deja activar?','Tienes dinero de Bien Visto contigo por encima del tope o desde hace más de {{H}} horas. Entrega y se desbloquea al confirmarse.'],
   ['¿Cuándo se desbloquea?','En cuanto Bien Visto confirma tu entrega y tu saldo baja del tope. Avísala desde «Mi saldo».']]],
@@ -2977,16 +2979,16 @@ const AYUDA_TEXTOS={
   ['¿Cuándo uso Lote?','Cuando entregas 2 o más displays al mismo local. Eliges el negocio una vez y solo tocas cada display.'],
   ['Me equivoqué de display','Tócalo en la lista y elige «Quitar» antes de activar.']]],
  displays:['Buscar displays',[
-  ['¿Qué significa cada estado?','Activo: lleva a reseñas. Libre: en inventario, sin negocio. Retirado: ya no lleva a reseñas y muestra un botón al negocio en Google Maps.']]],
+  ['¿Qué significa cada estado?','Activo: lleva a reseñas. Libre: en inventario, sin negocio. Retirado: ya no lleva a reseñas; quien lo escanea ve un aviso de que no está disponible.']]],
  ventas:['Mis ventas',[
-  ['¿Por qué no veo los datos de mis clientes?','Por privacidad. Tú capturas el contacto una sola vez, al vender; después Bien Visto envía y reenvía los recibos y las facturas por ti, sin que tengas que ver el teléfono ni el correo.'],
+  ['¿Dónde quedan los datos de mis clientes?','Los capturas al vender. Bien Visto los guarda para mandarle su recibo por correo, y se llenan solos si le vendes otra vez al mismo cliente.'],
   ['¿Y si el número estaba mal?','Si lo notas al momento, corrígelo en esa misma pantalla. Después, escribe a soporte y lo corrigen.'],
   ['¿Cuándo recibo mi comisión?','La retienes al cobrar: del dinero del cliente te quedas {{C}}, y entregas el resto a Bien Visto.']]],
  desempeno:['Tu mes',[
   ['¿Qué cuenta como display entregado?','Cuenta cuando Bien Visto confirma tu entrega del dinero, no cuando lo vendes. El mes va del 1 al último día y el día 1 empiezas de cero.'],
   ['¿Cómo gano mi comisión?','La retienes al cobrar: del dinero del cliente te quedas {{C}} por display y entregas el resto a Bien Visto.']]],
  detalle:['Cambios a un display',[
-  ['¿Cómo cambio de negocio o repongo un display?','Como vendedor nuevo no lo haces tú: envías una solicitud con el motivo (y una foto si se dañó) y Bien Visto la revisa. Mientras tanto el display sigue funcionando. Los vendedores de confianza lo hacen directo, con hasta {{LR}} reposiciones al mes.'],
+  ['¿Cómo cambio de negocio o repongo un display?','Como vendedor nuevo no lo haces tú: envías una solicitud con el motivo (y una foto si se dañó) y Bien Visto la revisa. Mientras tanto el display sigue funcionando. Los vendedores de confianza cambian de negocio directo y reponen directo hasta {{LR}} veces al mes; después, también envían solicitud.'],
   ['¿Por qué lo revisa Bien Visto?','Un display cambiado o repuesto cambia a dónde van las reseñas de un cliente que ya pagó. Revisarlo evita errores y que se pierdan displays.'],
   ['¿Puedo retirar un display?','No desde tu panel. Si un cliente ya no lo quiere, pide la anulación de la venta o escribe a Bien Visto.'],
   ['¿Se pierden los escaneos?','No. El historial queda guardado aunque el display se retire.']]]};
@@ -3255,8 +3257,9 @@ const AYUDA_TEXTOS={
       }
       const pendiente = extra.solicitud && extra.solicitud.estado === "pendiente";
       if (!pendiente) {
-        botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/cambiar") } }, ["Solicitar cambio de negocio"]));
-        botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/reponer") } }, ["Solicitar reposición"]));
+        const conf = nivelVend === "confianza";
+        botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/cambiar") } }, [conf ? "Cambiar de negocio" : "Solicitar cambio de negocio"]));
+        botones.push(el("button", { type: "button", clase: "btn s", on: { click: () => ir("#/solicitar/" + enc(f.folio) + "/reponer") } }, [conf ? "Reponer display" : "Solicitar reposición"]));
       }
     }
     // La venta que activó este display: el servidor valida que aún se pueda anular.
@@ -3343,12 +3346,12 @@ const AYUDA_TEXTOS={
         el("span", { clase: "lbl", texto: "Escaneos, últimos 7 días" }),
         el("div", { clase: "grande", texto: String(n) }),
         ...(grafica ? [grafica] : []),
-        el("p", { clase: "hint", style: "margin:0", texto: n + " en total · el reporte mensual separa NFC y QR" }),
+        el("p", { clase: "hint", style: "margin:0", texto: n + " en total" }),
       ]));
     }
 
     if (f.estado === "retirado") {
-      bloques.push(el("div", { clase: "aviso alerta", texto: "Este display está retirado. Quien lo escanee verá un botón al negocio en Google Maps. Si crees que fue un error, escribe a Bien Visto." }));
+      bloques.push(el("div", { clase: "aviso alerta", texto: "Este display está retirado: quien lo escanee verá que no está disponible. Si crees que fue un error, escribe a Bien Visto." }));
     }
 
     bloques.push(...botones, msg);
@@ -3371,11 +3374,48 @@ const AYUDA_TEXTOS={
     const url = el("input", { type: "url", placeholder: "https://..." });
     const motivo = el("input", { maxlength: "200" });
     const nota = el("textarea", { maxlength: "500" });
-    const boton = el("button", { type: "submit", clase: "btn p" }, [cambiar ? "Enviar solicitud de cambio" : "Enviar solicitud de reposición"]);
+
+    // Vendedor de confianza: el cambio de negocio se aplica al instante; la reposición también,
+    // si elige el display nuevo y le quedan reposiciones directas este mes. Si no, va como solicitud.
+    let yo = null;
+    try { yo = await getJSON("/api/vendedor/yo"); } catch (_) { /* sin red: se trata como solicitud */ }
+    const conf = !!yo && yo.nivel === "confianza";
+    if (yo && yo.nivel) nivelVend = yo.nivel;
+    const quedan = conf ? Math.max(0, (Number(yo.lim_rep) || 0) - (Number(yo.reposiciones_directas_mes) || 0)) : 0;
+    let selNuevo = null;
+    const extras = [];
+    if (!cambiar && conf && quedan > 0) {
+      let libres = [];
+      try {
+        const d = await getJSON("/api/vendedor/displays");
+        libres = ((d && d.displays) || []).filter((x) => x.estado === "libre" && !x.venta_id && x.folio !== folio);
+      } catch (_) { /* sin lista: queda como solicitud */ }
+      if (libres.length) {
+        selNuevo = el("select", {}, [
+          el("option", { value: "", texto: "Que Bien Visto elija (envía solicitud)" }),
+          ...libres.map((x) => el("option", { value: x.folio, texto: x.folio })),
+        ]);
+        extras.push(campo("Display nuevo (de los tuyos libres)", selNuevo));
+        extras.push(el("p", { clase: "hint", texto: "Te quedan " + quedan + " de " + yo.lim_rep + " reposiciones directas este mes. El display nuevo queda activo con el mismo negocio y " + folio + " queda retirado." }));
+      } else {
+        extras.push(el("p", { clase: "hint", texto: "No tienes displays libres para reponer directo. Envía la solicitud y Bien Visto elige uno." }));
+      }
+    } else if (!cambiar && conf) {
+      extras.push(el("p", { clase: "hint", texto: "Ya usaste tus " + yo.lim_rep + " reposiciones directas de este mes. Esta va como solicitud y la revisa Bien Visto." }));
+    } else if (cambiar && conf) {
+      extras.push(el("p", { clase: "hint", texto: "Como vendedor de confianza, el cambio se aplica al instante: el display empieza a llevar a las reseñas del nuevo negocio." }));
+    }
+
+    const etiquetaBoton = () => cambiar
+      ? (conf ? "Cambiar de negocio" : "Enviar solicitud de cambio")
+      : (selNuevo && selNuevo.value ? "Reponer ahora" : "Enviar solicitud de reposición");
+    const boton = el("button", { type: "submit", clase: "btn p" }, [etiquetaBoton()]);
+    if (selNuevo) selNuevo.addEventListener("change", () => { boton.textContent = etiquetaBoton(); });
     const form = el("form", { novalidate: "" }, [
       el("span", { clase: "lbl", texto: "Display" }),
       el("div", { clase: "folio sm", texto: folio }),
       ...(cambiar ? [campo("Nombre del nuevo negocio", nuevo), campo("Enlace de reseña de Google del nuevo negocio", url)] : []),
+      ...extras,
       campo("Motivo (opcional)", motivo),
       campo("Nota (opcional)", nota),
       boton,
@@ -3391,12 +3431,16 @@ const AYUDA_TEXTOS={
         if (!cuerpo.nuevo_negocio) return texto(msg, "Escribe el nombre del nuevo negocio.", "err");
         if (!/^https:\/\//.test(cuerpo.url_resena)) return texto(msg, "El enlace debe empezar con https://", "err");
       }
+      if (selNuevo && selNuevo.value) cuerpo.folio_nuevo = selNuevo.value;
       boton.disabled = true;
       try {
         const { status, datos } = await postJSON("/api/vendedor/solicitudes", cuerpo);
         if (status === 201 && datos && datos.success) {
           form.reset();
-          texto(msg, "Solicitud enviada.", "ok");
+          if (datos.directo && cambiar) texto(msg, "Listo: " + folio + " ya lleva a las reseñas de " + cuerpo.nuevo_negocio + ".", "ok");
+          else if (datos.directo) texto(msg, "Listo: " + datos.folio_nuevo + " ya está activo con el mismo negocio y " + folio + " quedó retirado.", "ok");
+          else if (datos.limite_usado) texto(msg, "Ya usaste tus reposiciones directas del mes. Enviamos la solicitud y Bien Visto la revisa.", "ok");
+          else texto(msg, "Solicitud enviada. Bien Visto la revisa.", "ok");
         } else if (status !== 401) {
           texto(msg, errorDe(datos), "err");
         }
@@ -3406,7 +3450,8 @@ const AYUDA_TEXTOS={
         boton.disabled = false;
       }
     });
-    return [el("h2", { texto: cambiar ? "Cambiar de negocio" : "Pedir reposición" }), form];
+    const titulo = cambiar ? "Cambiar de negocio" : (conf ? "Reponer display" : "Pedir reposición");
+    return [el("h2", { texto: titulo }), form];
   }
 
   // Hoja con los datos para transferir. Cada dato tiene su botón para copiarlo.
@@ -3656,8 +3701,9 @@ const AYUDA_TEXTOS={
       : "Te quedan " + s.horas_restantes + " horas para entregar lo cobrado.";
     const tope = Number(s.tope) || 0;
     const custodia = Number(s.custodia) || 0;
-    const pct = tope > 0 ? Math.min(100, Math.round(custodia / tope * 100)) : 0;
-    const bloqueado = s.impago || s.plazo_vencido || custodia >= tope && tope > 0;
+    const expuesto = custodia + (Number(s.en_revision) || 0);
+    const pct = tope > 0 ? Math.min(100, Math.round(expuesto / tope * 100)) : 0;
+    const bloqueado = s.impago || s.plazo_vencido || expuesto >= tope && tope > 0;
     const [txtChip, clsChip] = bloqueado ? ["Bloqueado", "r"] : pct >= 80 ? ["Cerca del tope", ""] : ["Dentro del tope", "v"];
     const nodos = [
       el("h2", { texto: "Mi saldo" }),
@@ -3686,7 +3732,7 @@ const AYUDA_TEXTOS={
       el("div", { clase: "tarjeta" }, [
         el("span", { clase: "lbl", texto: "Tope de custodia" }),
         el("div", { clase: "fila", style: "margin-bottom:8px" }, [
-          el("b", { texto: dinero(custodia) + " de " + dinero(tope) }),
+          el("b", { texto: dinero(custodia) + (expuesto > custodia + 0.001 ? " + " + dinero(expuesto - custodia) + " en revisión" : "") + " de " + dinero(tope) }),
           chip(null, txtChip, clsChip),
         ]),
         el("div", { clase: "barra", role: "img", "aria-label": pct + "% del tope" }, [el("i", { style: "width:" + pct + "%" })]),
@@ -3741,7 +3787,7 @@ const AYUDA_TEXTOS={
         el("span", { clase: "grande", texto: dinero(comision) }),
         el("span", { texto: cuenta.length + (cuenta.length === 1 ? " venta" : " ventas") + " · " + displays + (displays === 1 ? " display" : " displays") + " · " + dinero(COMISION_DISPLAY) + " por display, la retienes al cobrar.", style: "display:block;font-size:14px;opacity:.92" }),
       ]),
-      el("div", { clase: "aviso", style: "font-size:14.5px" }, [el("b", { texto: "Por privacidad " }), "aquí no ves el contacto de tus clientes. Bien Visto envía y reenvía los recibos y las facturas por ti."]),
+      el("div", { clase: "aviso", style: "font-size:14.5px" }, [el("b", { texto: "Recibos: " }), "Bien Visto le manda a tu cliente su recibo por correo después de cobrar. Si no dejó correo, no le llega."]),
       el("ul", { clase: "lista-filas" }, ventasCache.map((v) => {
         const [txt, cls] = etiquetaEstado[v.estado] || [v.estado, "g"];
         const comVenta = (Number(v.total) || 0) - (Number(v.a_entregar) || 0);
@@ -3931,12 +3977,30 @@ const AYUDA_TEXTOS={
 
   // ===== Venta por pasos (según el mockup): folio → negocio → confirmar → datos → cobro → listo =====
   const FOLIO_APP = /^[ABCDEFGHJKLMNPQRSTUVWXYZ][2-9][ABCDEFGHJKLMNPQRSTUVWXYZ][2-9]$/;
-  const PRECIO_DISPLAY = 350;
-  const PROMO_N = 3;
-  const PROMO_PRECIO = 900;
+  // Importes vigentes: se leen de GET /api/vendedor/config al entrar y antes de pintar cada pantalla
+  // (como mucho cada 60 s). Los valores de aquí solo se usan si nunca se pudo leer la configuración.
+  let PRECIO_DISPLAY = 350;
+  let PROMO_N = 3;
+  let PROMO_PRECIO = 900;
   const MAX_LOTE = 50;
-  const COMISION_DISPLAY = 150;
-  const ENTREGA_DISPLAY = PRECIO_DISPLAY - COMISION_DISPLAY;
+  let COMISION_DISPLAY = 150;
+  let ENTREGA_DISPLAY = PRECIO_DISPLAY - COMISION_DISPLAY;
+  let preciosLeidos = 0;
+  async function actualizarPrecios(forzar = false) {
+    if (!forzar && Date.now() - preciosLeidos < 60000) return;
+    try {
+      const c = await getJSON("/api/vendedor/config");
+      if (c && [c.precio_display, c.comision_display, c.promo_n, c.promo_precio].every((x) => Number.isFinite(Number(x)))) {
+        PRECIO_DISPLAY = Number(c.precio_display);
+        COMISION_DISPLAY = Number(c.comision_display);
+        PROMO_N = Number(c.promo_n);
+        PROMO_PRECIO = Number(c.promo_precio);
+        ENTREGA_DISPLAY = PRECIO_DISPLAY - COMISION_DISPLAY;
+        cfgAyuda = { ...(cfgAyuda || {}), ...c };
+        preciosLeidos = Date.now();
+      }
+    } catch (_) { /* sin red: se quedan los últimos importes leídos */ }
+  }
   const ENLACE_FACTURA = "https://bienvisto.com.mx/factura";
   const DOMINIOS_TYPO = { "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gamil.com": "gmail.com", "gmail.co": "gmail.com", "gmail.con": "gmail.com", "hotmial.com": "hotmail.com", "hotmail.con": "hotmail.com", "outlok.com": "outlook.com", "outlook.con": "outlook.com", "yaho.com": "yahoo.com", "yahoo.con": "yahoo.com" };
   const sinAcentos = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -4219,7 +4283,7 @@ const AYUDA_TEXTOS={
   function bloqueoDe(s) {
     if (s.impago) return "deuda";
     if (s.plazo_vencido) return "horas";
-    if (Number(s.custodia) + ENTREGA_DISPLAY > Number(s.tope)) return "tope";
+    if (Number(s.custodia) + (Number(s.en_revision) || 0) + ENTREGA_DISPLAY > Number(s.tope)) return "tope";
     return "";
   }
 
