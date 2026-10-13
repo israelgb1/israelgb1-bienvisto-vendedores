@@ -2991,17 +2991,31 @@ const AYUDA_TEXTOS={
   ['¿Puedo retirar un display?','No desde tu panel. Si un cliente ya no lo quiere, pide la anulación de la venta o escribe a Bien Visto.'],
   ['¿Se pierden los escaneos?','No. El historial queda guardado aunque el display se retire.']]]};
 
-  const ayudaCifras = () => ({
-    P: dinero(PRECIO_DISPLAY), C: dinero(COMISION_DISPLAY), E: dinero(ENTREGA_DISPLAY),
-    PN: PROMO_N, PP: dinero(PROMO_PRECIO), PSUM: dinero(PROMO_N * PRECIO_DISPLAY),
-    PCOM: dinero(PROMO_N * COMISION_DISPLAY), PENT: dinero(PROMO_PRECIO - PROMO_N * COMISION_DISPLAY),
-    EXN: PROMO_N * 2, EXP: dinero(2 * PROMO_PRECIO), EYN: PROMO_N + 1,
-    TM: dinero(2000), TN: dinero(600), H: 72, LR: 2,
-  });
-  const ayudaTx = (t) => { const k = ayudaCifras(); return String(t).replace(/\{\{(\w+)\}\}/g, (m, n) => (n in k ? k[n] : m)); };
+  // Importes del panel de administrador (GET /api/vendedor/config). Cada hoja los pide al abrirse,
+  // así que un cambio de precio o de tope se refleja en los textos sin recargar la app.
+  let cfgAyuda = null;
+  async function cargarCfgAyuda() {
+    if (!cfgAyuda) cfgAyuda = { precio_display: PRECIO_DISPLAY, comision_display: COMISION_DISPLAY, promo_n: PROMO_N, promo_precio: PROMO_PRECIO, tope_confianza: 2000, tope_nuevo: 600, horas: 72, lim_rep: 2 };
+    try {
+      const c = await getJSON("/api/vendedor/config");
+      if (c && Number.isFinite(Number(c.precio_display))) cfgAyuda = { ...cfgAyuda, ...c };
+    } catch (_) { /* sin red: se usan los últimos importes conocidos */ }
+    return cfgAyuda;
+  }
+  const ayudaCifras = (c) => {
+    const P = Number(c.precio_display), C = Number(c.comision_display), N = Number(c.promo_n), PP = Number(c.promo_precio);
+    return {
+      P: dinero(P), C: dinero(C), E: dinero(P - C),
+      PN: N, PP: dinero(PP), PSUM: dinero(N * P), PCOM: dinero(N * C), PENT: dinero(PP - N * C),
+      EXN: N * 2, EXP: dinero(2 * PP), EYN: N + 1,
+      TM: dinero(c.tope_confianza), TN: dinero(c.tope_nuevo), H: c.horas, LR: c.lim_rep,
+    };
+  };
+  const ayudaTx = (t, c) => { const k = ayudaCifras(c); return String(t).replace(/\{\{(\w+)\}\}/g, (m, n) => (n in k ? k[n] : m)); };
 
   // Hoja «Ayuda · …» (igual que el mockup): preguntas plegables y soporte al pie.
-  function abrirAyuda(clave, ix = 0) {
+  async function abrirAyuda(clave, ix = 0) {
+    const cfg = await cargarCfgAyuda();
     const [titulo, preguntas] = AYUDA_TEXTOS[clave] || AYUDA_TEXTOS.hoy;
     const cerrar = () => { hoja.remove(); document.removeEventListener("keydown", alTeclear); };
     const alTeclear = (e) => { if (e.key === "Escape" && [...document.querySelectorAll(".hoja-fondo")].pop() === hoja) cerrar(); };
@@ -3012,8 +3026,8 @@ const AYUDA_TEXTOS={
           el("button", { type: "button", clase: "x", "aria-label": "Cerrar ayuda", on: { click: cerrar } }, [el("b", { "aria-hidden": "true", texto: "✕" }), "Cerrar"]),
         ]),
         ...preguntas.map(([q, r], i) => el("details", i === ix ? { open: "" } : {}, [
-          el("summary", { texto: ayudaTx(q) }),
-          el("p", { texto: ayudaTx(r) }),
+          el("summary", { texto: ayudaTx(q, cfg) }),
+          el("p", { texto: ayudaTx(r, cfg) }),
         ])),
         el("div", { style: "margin-top:16px" }, [
           el("a", { clase: "btn p sm", style: "width:100%", href: WA_AYUDA, target: "_blank", rel: "noopener" }, ["Escribir a soporte por WhatsApp"]),
