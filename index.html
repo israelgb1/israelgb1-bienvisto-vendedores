@@ -3586,6 +3586,26 @@ var qrcode = function() {
     const enRevisionMonto = Math.round(avisos.filter((x) => x.estado === "pendiente").reduce((a, x) => a + (Number(x.monto) || 0), 0) * 100) / 100;
     const disponible = Math.round((custodia - enRevisionMonto) * 100) / 100;
     const rechazado = !enRevision && avisos[0] && avisos[0].estado === "rechazado" ? avisos[0] : null;
+    // Confirmaciones: se muestran 24 horas desde que Bien Visto las confirmó, o hasta que el vendedor las cierre.
+    const VENTANA_MS = 24 * 60 * 60 * 1000;
+    const cerradas = (() => { try { return JSON.parse(localStorage.getItem("bv_confirmaciones_cerradas") || "[]"); } catch (_) { return []; } })();
+    const confirmados = avisos.filter((x) => x.estado === "confirmado" && x.resuelto_at
+      && Date.now() - Date.parse(String(x.resuelto_at).replace(" ", "T") + "Z") < VENTANA_MS
+      && !cerradas.includes(x.id));
+    for (const x of confirmados) {
+      nodos.push(el("div", { clase: "aviso", role: "status", style: "background:var(--verde-visto);color:#fff;margin-bottom:12px" }, [
+        el("div", { style: "display:flex;align-items:flex-start;justify-content:space-between;gap:12px" }, [
+          el("div", {}, [
+            el("p", { style: "margin:0 0 4px;font-weight:700;font-size:17px", texto: "Bien Visto confirmó tu entrega de " + dinero(x.monto) + "." }),
+            el("p", { style: "margin:0", texto: "Tu saldo ya se actualizó." }),
+          ]),
+          el("button", { type: "button", "aria-label": "Cerrar mensaje", style: "flex:none;width:auto;margin:0;background:transparent;border:1px solid #fff;color:#fff;border-radius:999px;padding:6px 12px;font-size:14px", on: { click: () => {
+            try { localStorage.setItem("bv_confirmaciones_cerradas", JSON.stringify([...cerradas, x.id])); } catch (_) {}
+            render();
+          } } }, ["Cerrar"]),
+        ]),
+      ]));
+    }
     if (enRevision) nodos.push(el("div", { clase: "tarjeta", style: "border-color:var(--ambar);background:var(--ambar-claro)" }, [
       el("span", { clase: "lbl", texto: "En revisión" }),
       el("b", { texto: "Avisaste " + dinero(enRevisionMonto) + ". Bien Visto lo está revisando." }),
