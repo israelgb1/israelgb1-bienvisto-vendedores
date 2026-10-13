@@ -153,6 +153,11 @@ a.btn{text-decoration:none;display:flex;align-items:center;justify-content:cente
 .hoja-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .hoja-top h2{margin:0}
 .hoja-cuerpo{margin-top:12px}
+.ayuda-hoja .x{width:auto;min-width:44px;height:44px;padding:0 16px;margin:0;border:0;border-radius:999px;background:var(--menta);color:var(--tinta);font:600 15px/1 var(--fb);display:inline-flex;align-items:center;gap:6px}
+.ayuda-hoja .x b{font-size:16px}
+.ayuda-hoja details{border-bottom:1px solid var(--borde);padding:4px 0}
+.ayuda-hoja summary{font-weight:600;padding:10px 0;cursor:pointer;min-height:44px;list-style-position:outside;margin-left:18px}
+.ayuda-hoja details p{font-size:15px;color:var(--muted);padding:0 0 12px 18px;margin:0}
 .dato-pago{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--borde)}
 .dato-pago:last-child{border-bottom:0}
 .dato-pago .lbl{margin:0}
@@ -2909,7 +2914,7 @@ var qrcode = function() {
     window.scrollTo(0, 0);
     try {
       const nodos = await fn(r.slice(1));
-      if (mi === turno && nodos) app.replaceChildren(...nodos, ayudaDePantalla(pantalla));
+      if (mi === turno && nodos) app.replaceChildren(...nodos);
     } catch (_) {
       if (mi === turno) app.replaceChildren(el("p", { clase: "msg err", texto: MSG_ERROR_RED }));
     }
@@ -2925,87 +2930,110 @@ var qrcode = function() {
     render();
   }
 
-  // Ayuda contextual: textos por pantalla. Precios y cifras salen de las constantes.
-  const AYUDA = () => ({
-    hoy: ["Inicio", [
-      ["¿Cómo empiezo a vender?", "Toca «Vender un display» y acerca tu celular al display (NFC), o toca «Escanear el QR del display». Si el display está libre, sigues con la venta."],
-      ["¿Dónde está el folio?", "Son 4 caracteres impresos al pie del display, por ejemplo X4W3. Escríbelo en «¿Prefieres escribir el folio?» y se abre solo."],
-      ["Mi celular no tiene NFC", "Toca «Escanear el QR del display». La cámara solo se abre cuando tú lo tocas."],
-    ]],
-    vender: ["Vender un display", [
-      ["¿No aparece el negocio?", "Escribe la colonia o la calle junto con el nombre, por ejemplo «Tacos La Esquina Patria». Si no sale, el negocio puede no tener ficha en Google Maps."],
-      ["Salen dos negocios con el mismo nombre", "Confirma la dirección con el cliente. Cada sucursal tiene su propia ficha y sus propias reseñas."],
-      ["¿Qué WhatsApp pongo?", "El de la persona que recibe el display y el reporte, normalmente el dueño o el encargado."],
-      ["¿Qué pasa si activo sin cobrar?", `Al activar te comprometes a entregar ${dinero(ENTREGA_DISPLAY)} a Bien Visto por cada display, hayas cobrado o no. Si el cliente no pagó, ese dinero lo pones tú.`],
-      ["¿Puedo cambiar el precio?", `No. Es fijo: ${dinero(PRECIO_DISPLAY)} con IVA incluido. Si activas ${PROMO_N} displays para un mismo negocio, usa «Activar varios» y pagan ${dinero(PROMO_PRECIO)} en total.`],
-      ["¿Cómo pide la factura el cliente?", "Él mismo la pide en bienvisto.com.mx/factura con la referencia de la venta."],
-    ]],
-    prueba: ["Prueba del display", [
-      ["¿No se abrió la reseña?", "Para escribir una reseña hay que tener sesión de Google en el celular. Prueba con otro teléfono."],
-      ["¿Por qué con otro celular?", "Así ves lo que verá un cliente del negocio, no la pantalla de administrador."],
-      ["¿Qué pasa si el cliente no compra?", "Termina la prueba. El display queda libre y no se guarda ningún dato del cliente."],
-    ]],
-    escanear: ["Escanear el QR", [
-      ["La cámara no se abre", "Revisa el permiso de cámara del navegador. Si tu navegador no puede leer QR, escribe el folio desde Inicio."],
-      ["¿Dónde está el QR?", "En el display, al pie o en la etiqueta. Apunta la cámara al código completo."],
-    ]],
-    lote: ["Activar varios", [
-      ["¿Cuándo uso Activar varios?", "Cuando entregas 2 o más displays al mismo negocio. Eliges el negocio y el cliente una vez, y agregas los displays."],
-      ["¿Cómo funciona la promoción?", `${PROMO_N} displays en la misma venta cuestan ${dinero(PROMO_PRECIO)} en total. Los que no completan un grupo de ${PROMO_N} se cobran a ${dinero(PRECIO_DISPLAY)}.`],
-      ["Me equivoqué de display", "Toca «Quitar» junto al folio antes de activar."],
-    ]],
-    displays: ["Mis displays", [
-      ["¿Qué significa cada estado?", "Activo: lleva a reseñas. Libre: en inventario, sin negocio. En prueba: un cliente lo está probando. Retirado: ya no lleva a reseñas."],
-      ["¿Cómo busco?", "Por folio, nombre del negocio o dirección."],
-    ]],
-    d: ["Detalle del display", [
-      ["¿Cómo cambio de negocio o pido una reposición?", "Envía una solicitud con el motivo. Bien Visto la revisa y te avisa. Mientras tanto el display sigue funcionando."],
-      ["¿Puedo retirar un display?", "No desde tu panel. Si el cliente ya no lo quiere, escribe a Bien Visto."],
-      ["¿Se pierden los escaneos?", "No. El historial del display queda guardado."],
-    ]],
-    saldo: ["Mi saldo", [
-      ["¿Cómo se calcula mi saldo?", `Suma lo que cobraste tú y aún no entregaste, con ${dinero(ENTREGA_DISPLAY)} por display. Tu comisión de ${dinero(COMISION_DISPLAY)} ya la retuviste al cobrar.`],
-      ["¿Qué es el tope?", "Es el máximo de dinero de Bien Visto que puedes tener contigo. Si lo alcanzas, el panel no te deja activar más displays hasta que entregues."],
-      ["¿Qué es un adeudo?", "Si pasas el plazo de entrega y no avisas, Bien Visto puede retirar esos displays por impago. Mientras haya adeudo no puedes activar más."],
-    ]],
-    bloqueo: ["Entrega para seguir", [
-      ["¿Por qué no me deja activar?", "Tienes dinero de Bien Visto contigo por encima del tope, tu plazo de entrega venció o tienes un adeudo."],
-      ["¿Cuándo se desbloquea?", "En cuanto Bien Visto confirma tu entrega y tu saldo baja del tope. Usa «Ver mi saldo y entregar»."],
-    ]],
-    ventas: ["Mis ventas", [
-      ["¿Por qué no veo los datos de mis clientes?", "Por privacidad. Capturas el contacto una sola vez, al vender."],
-      ["¿Cuándo recibo mi comisión?", `La retienes al cobrar: del dinero del cliente te quedas ${dinero(COMISION_DISPLAY)} por display y entregas el resto a Bien Visto.`],
-    ]],
-    cuenta: ["Mi cuenta", [
-      ["¿Cómo cambio mi correo o WhatsApp?", "Pídelo a Bien Visto. Desde el panel no se cambian."],
-      ["¿Cómo cierro sesión?", "Toca «Cerrar sesión» y confirma. Para volver a activar displays tendrás que entrar de nuevo con tu correo."],
-    ]],
-    desempeno: ["Tu mes", [
-      ["¿Qué cuenta como display entregado?", "Cuenta cuando Bien Visto confirma tu entrega del dinero, no cuando lo vendes. El mes va del 1 al último día."],
-      ["¿Cómo gano mi comisión?", `La retienes al cobrar: del dinero del cliente te quedas ${dinero(COMISION_DISPLAY)} por display y entregas el resto a Bien Visto.`],
-    ]],
-  });
-  const CLAVE_AYUDA = { d: "d", solicitar: "d", v: "ventas", varios: "hoy", p: "hoy" };
+  // Textos de servicio: los mismos del mockup (títulos, preguntas y respuestas).
+  // Las cifras se llenan con {{clave}} desde las constantes de la app.
+const AYUDA_TEXTOS={
+ priv:['Aviso de privacidad',[
+  ['¿Qué datos se guardan?','Nombre, WhatsApp y correo de tu cliente, solo para activar su display y mandarle su recibo y su reporte. No se venden ni se comparten. Aviso completo: bienvisto.com.mx/privacidad'],
+  ['¿Qué le digo al cliente?','Que Bien Visto guarda su nombre y contacto para su display y su recibo, y que puede pedir que los borren escribiendo a soporte.']]],
+ hoy:['Activar un display',[
+  ['¿Cómo abro un display?','Acerca la parte de arriba de tu celular al ícono NFC del display, o escanea su QR con la cámara. Si está libre, se abre directo el formulario.'],
+  ['Mi celular no reacciona al acercarlo','Revisa que el NFC esté encendido (Android: Ajustes › Conexiones). En iPhone funciona con la pantalla desbloqueada. Si no, usa el QR o teclea el folio.'],
+  ['Mi celular no tiene NFC','Toca «Escanear QR» aquí en el panel. Es mejor que usar la cámara del celular, porque no te saca de tu sesión.'],
+  ['¿Dónde está el folio?','Son 4 caracteres impresos al pie del display y en la etiqueta de abajo. Ejemplo: X4W3.']]],
+ act1:['Datos del cliente',[
+  ['¿Qué WhatsApp y correo pongo?','Los de la persona que recibe el display y el reporte mensual: normalmente el dueño o el encargado.'],
+  ['El cliente ya tiene otro display','Toca «¿Ya es cliente? Búscalo» y encuéntralo por su nombre o por el de su negocio. Así no se duplica.']]],
+ cl:['Buscar cliente',[
+  ['¿Cómo lo encuentro?','Escribe parte del nombre de la persona (Rosa), del apellido (Ruiz) o del negocio (Tacos). No importan acentos ni mayúsculas.'],
+  ['No aparece','Si nunca le has activado un display, no está en tu lista. Regístralo como cliente nuevo.']]],
+ act2:['Encontrar el negocio',[
+  ['¿No aparece el negocio?','Agrega la colonia o la calle: «Tacos La Esquina Patria». Si aun así no sale, puede que no tenga ficha en Google Maps; deja el display libre y escríbenos para darla de alta.'],
+  ['Salen dos negocios con el mismo nombre','Fíjate en la dirección y confírmala con el cliente. Cada sucursal tiene su propia ficha y sus propias reseñas.'],
+  ['El nombre en Google está mal escrito','Elígelo igual. Las reseñas van a esa ficha; corregir el nombre se hace aparte en Google.']]],
+ act3:['Confirmar el negocio',[
+  ['¿Cómo sé que es la sucursal correcta?','Lee la dirección en voz alta con el cliente. Si coincide con el local donde estás, es esa.'],
+  ['¿Y si me equivoco?','Tienes 8 segundos para deshacer. Después, entra al display y usa «Cambiar de negocio»; el folio no cambia y no se reimprime nada.']]],
+ act4:['Probar el display',[
+  ['¿No se abrió la reseña?','Para escribir una reseña hay que tener sesión de Google en el celular. Prueba con otro teléfono o abre el enlace aquí.'],
+  ['¿Por qué con otro celular?','Así ves exactamente lo que verá un cliente del negocio, no la pantalla de administrador.']]],
+ pago:['Cobro y activación',[
+  ['¿Qué pasa si activo sin cobrar?','Al activar te comprometes a entregar {{E}} a Bien Visto por cada display, hayas cobrado o no. Si el cliente no pagó, ese dinero lo pones tú y no ganas la comisión de esa venta.'],
+  ['¿Cuándo uso transferencia?','Cuando el cliente te paga a tu CLABE (la que cargaste en «Mis datos de cobro»). Revisa en tu banco que el dinero ya cayó antes de activar; la clave de rastreo ayuda, pero no sustituye a tu banco.'],
+  ['¿Cómo le mando mis datos al cliente?','Con «Transferencia» elegida, toca «Enviar datos por WhatsApp». El cliente recibe al momento tu titular, banco, CLABE, número de cuenta y tipo de cuenta, con el monto. Se manda desde el WhatsApp de Bien Visto, no desde tu número. Tus datos los cargas una vez en «Mis datos de cobro».'],
+  ['¿Puedo cambiar el precio?','No. Es fijo: {{P}} con IVA incluido. Solo cambia con la promoción: {{PN}} displays en la misma venta cuestan {{PP}}. El cliente lo ve en su recibo.'],
+  ['¿Cómo funciona la promoción de {{PN}} por {{PP}}?','Si el mismo cliente compra {{PN}} displays en la misma venta, paga {{PP}} en vez de {{PSUM}}. Tu comisión sigue siendo {{C}} por display ({{PCOM}} en total) y entregas {{PENT}} a Bien Visto. El descuento lo absorbe Bien Visto. Con {{EXN}} displays serían 2 promociones ({{EXP}}); con {{EYN}}, una promoción más uno de {{P}}. Cuentan los displays de la misma venta, de cualquier tipo.']]],
+ saldo:['Mi saldo',[
+  ['¿Cómo se calcula mi saldo?','Sumas los {{E}} de cada venta que cobraste tú (efectivo o transferencia) y aún no entregaste. Tu comisión de {{C}} ya la retuviste al cobrar, así que Bien Visto no te debe nada.'],
+  ['¿Qué es el tope?','Es el máximo de dinero de Bien Visto que puedes tener contigo: {{TM}} o {{H}} horas, lo que ocurra primero. Si eres vendedor nuevo, arrancas con {{TN}} y subes a {{TM}} cuando Bien Visto confirma tu primera entrega. Al llegar, el panel no te deja activar más displays hasta que entregues.'],
+  ['¿Qué es el ajuste a mi favor?','Si Bien Visto anula una venta que ya habías entregado, esos {{E}} se te descuentan de tu siguiente entrega. Tú le devuelves su dinero al cliente.'],
+  ['¿Qué es un adeudo?','Si pasas el plazo de entrega y no avisas, Bien Visto puede retirar esos displays por impago. Los {{E}} de cada uno quedan como adeudo y no puedes activar más hasta liquidarlo o devolver los displays.'],
+  ['¿Cómo entrego?','En mano a Bien Visto o por depósito o transferencia a su cuenta. Toca «Avisar que entregué». Si fue depósito o transferencia, adjunta una foto del comprobante (tómala ahí mismo o súbela de tu galería). Cuando Bien Visto lo confirma, tu saldo baja y te llega un comprobante.']]],
+ bloqueo:['Entrega para seguir',[
+  ['¿Por qué no me deja activar?','Tienes dinero de Bien Visto contigo por encima del tope o desde hace más de {{H}} horas. Entrega y se desbloquea al confirmarse.'],
+  ['¿Cuándo se desbloquea?','En cuanto Bien Visto confirma tu entrega y tu saldo baja del tope. Avísala desde «Mi saldo».']]],
+ lote:['Activar varios',[
+  ['Mi celular no tiene NFC','Usa «Escanear QR de varios». La cámara se queda abierta y cada QR que lees se suma al lote; al final tocas «Listo».'],
+  ['¿Cuándo uso Lote?','Cuando entregas 2 o más displays al mismo local. Eliges el negocio una vez y solo tocas cada display.'],
+  ['Me equivoqué de display','Tócalo en la lista y elige «Quitar» antes de activar.']]],
+ displays:['Buscar displays',[
+  ['¿Qué significa cada estado?','Activo: lleva a reseñas. Libre: en inventario, sin negocio. Retirado: ya no lleva a reseñas y muestra un botón al negocio en Google Maps.']]],
+ ventas:['Mis ventas',[
+  ['¿Por qué no veo los datos de mis clientes?','Por privacidad. Tú capturas el contacto una sola vez, al vender; después Bien Visto envía y reenvía los recibos y las facturas por ti, sin que tengas que ver el teléfono ni el correo.'],
+  ['¿Y si el número estaba mal?','Si lo notas al momento, corrígelo en esa misma pantalla. Después, escribe a soporte y lo corrigen.'],
+  ['¿Cuándo recibo mi comisión?','La retienes al cobrar: del dinero del cliente te quedas {{C}}, y entregas el resto a Bien Visto.']]],
+ desempeno:['Tu mes',[
+  ['¿Qué cuenta como display entregado?','Cuenta cuando Bien Visto confirma tu entrega del dinero, no cuando lo vendes. El mes va del 1 al último día y el día 1 empiezas de cero.'],
+  ['¿Cómo gano mi comisión?','La retienes al cobrar: del dinero del cliente te quedas {{C}} por display y entregas el resto a Bien Visto.']]],
+ detalle:['Cambios a un display',[
+  ['¿Cómo cambio de negocio o repongo un display?','Como vendedor nuevo no lo haces tú: envías una solicitud con el motivo (y una foto si se dañó) y Bien Visto la revisa. Mientras tanto el display sigue funcionando. Los vendedores de confianza lo hacen directo, con hasta {{LR}} reposiciones al mes.'],
+  ['¿Por qué lo revisa Bien Visto?','Un display cambiado o repuesto cambia a dónde van las reseñas de un cliente que ya pagó. Revisarlo evita errores y que se pierdan displays.'],
+  ['¿Puedo retirar un display?','No desde tu panel. Si un cliente ya no lo quiere, pide la anulación de la venta o escribe a Bien Visto.'],
+  ['¿Se pierden los escaneos?','No. El historial queda guardado aunque el display se retire.']]]};
 
-  let verAyuda = false;
-  const ayudaDePantalla = (pantalla) => {
-    if (!verAyuda) {
-      return el("button", { type: "button", clase: "helpl quiet", on: { click: () => { verAyuda = true; render(); } } }, ["¿Cómo funciona esta pantalla?"]);
-    }
-    const textos = AYUDA();
-    const [titulo, preguntas] = textos[CLAVE_AYUDA[pantalla] || pantalla] || textos.hoy;
-    return el("section", { clase: "tarjeta", "aria-label": "Ayuda de esta pantalla" }, [
-      el("div", { clase: "fila", style: "justify-content:space-between" }, [
-        el("b", { texto: "Ayuda · " + titulo }),
-        el("button", { type: "button", clase: "btn s sm", on: { click: () => { verAyuda = false; render(); } } }, ["Cerrar"]),
+  const ayudaCifras = () => ({
+    P: dinero(PRECIO_DISPLAY), C: dinero(COMISION_DISPLAY), E: dinero(ENTREGA_DISPLAY),
+    PN: PROMO_N, PP: dinero(PROMO_PRECIO), PSUM: dinero(PROMO_N * PRECIO_DISPLAY),
+    PCOM: dinero(PROMO_N * COMISION_DISPLAY), PENT: dinero(PROMO_PRECIO - PROMO_N * COMISION_DISPLAY),
+    EXN: PROMO_N * 2, EXP: dinero(2 * PROMO_PRECIO), EYN: PROMO_N + 1,
+    TM: dinero(2000), TN: dinero(600), H: 72, LR: 2,
+  });
+  const ayudaTx = (t) => { const k = ayudaCifras(); return String(t).replace(/\{\{(\w+)\}\}/g, (m, n) => (n in k ? k[n] : m)); };
+
+  // Hoja «Ayuda · …» (igual que el mockup): preguntas plegables y soporte al pie.
+  function abrirAyuda(clave, ix = 0) {
+    const [titulo, preguntas] = AYUDA_TEXTOS[clave] || AYUDA_TEXTOS.hoy;
+    const cerrar = () => { hoja.remove(); document.removeEventListener("keydown", alTeclear); };
+    const alTeclear = (e) => { if (e.key === "Escape" && [...document.querySelectorAll(".hoja-fondo")].pop() === hoja) cerrar(); };
+    const hoja = el("div", { clase: "hoja-fondo", on: { click: (e) => { if (e.target === hoja) cerrar(); } } }, [
+      el("section", { clase: "hoja ayuda-hoja", role: "dialog", "aria-modal": "true", "aria-labelledby": "ayuda-t" }, [
+        el("div", { clase: "hoja-top" }, [
+          el("h2", { id: "ayuda-t", texto: "Ayuda · " + titulo, style: "font-size:22px" }),
+          el("button", { type: "button", clase: "x", "aria-label": "Cerrar ayuda", on: { click: cerrar } }, [el("b", { "aria-hidden": "true", texto: "✕" }), "Cerrar"]),
+        ]),
+        ...preguntas.map(([q, r], i) => el("details", i === ix ? { open: "" } : {}, [
+          el("summary", { texto: ayudaTx(q) }),
+          el("p", { texto: ayudaTx(r) }),
+        ])),
+        el("div", { style: "margin-top:16px" }, [
+          el("a", { clase: "btn p sm", style: "width:100%", href: WA_AYUDA, target: "_blank", rel: "noopener" }, ["Escribir a soporte por WhatsApp"]),
+          el("p", { clase: "hint", style: "text-align:center;margin:8px 0 0" }, [
+            el("a", { href: "https://bienvisto.com.mx/aviso-de-privacidad", target: "_blank", rel: "noopener" }, ["Aviso de privacidad"]),
+          ]),
+        ]),
       ]),
-      ...preguntas.map(([q, a]) => el("details", { style: "margin-top:6px" }, [
-        el("summary", { style: "font-weight:600;padding:8px 0;cursor:pointer", texto: q }),
-        el("p", { clase: "hint", texto: a }),
-      ])),
-      el("a", { clase: "btn s sm", style: "margin-top:10px", href: WA_AYUDA, target: "_blank", rel: "noopener" }, ["Escribir a soporte por WhatsApp"]),
     ]);
-  };
+    document.body.append(hoja);
+    document.addEventListener("keydown", alTeclear);
+    hoja.querySelector(".x").focus();
+  }
+  // Disparador que abre la hoja en su pregunta (mismo estilo que el mockup).
+  const disparador = (titulo, clave, ix = 0, estilo = "") =>
+    el("button", { type: "button", clase: "helpl quiet", style: estilo, on: { click: () => abrirAyuda(clave, ix) } }, [titulo]);
+
+  // «Ayuda de esta pantalla» (menú): la pantalla actual decide qué textos se muestran.
+  const CLAVE_AYUDA = { vender: "act1", prueba: "act4", d: "detalle", solicitar: "detalle", lote: "lote", displays: "displays", ventas: "ventas", v: "ventas", saldo: "saldo", bloqueo: "bloqueo", desempeno: "desempeno" };
+  const abrirAyudaDePantalla = () => abrirAyuda(CLAVE_AYUDA[ruta()[0] || "hoy"] || "hoy");
 
   // Ruta según el estado del display: libre → vender; en prueba → pantalla de prueba; si no → detalle.
   const rutaParaDisplay = (x) => {
@@ -3654,6 +3682,7 @@ var qrcode = function() {
     if (disponible > 0.001) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => abrirAvisarEntrega(disponible) } }, ["Avisar que entregué " + dinero(disponible)]));
     else if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", disabled: "", "aria-disabled": "true" }, ["Aviso en revisión · " + dinero(custodia) + " pendientes"]));
     if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => abrirDatosPago(custodia) } }, ["Datos de Bien Visto para transferir"]));
+    nodos.push(disparador("¿Cómo se calcula mi saldo?", "saldo", 0));
     nodos.push(
       el("h3", { clase: "sec-t", texto: "Tus ganancias" }),
       el("div", { clase: "tarjeta" }, [el("dl", { clase: "kv", style: "margin:0" }, [
@@ -3713,6 +3742,7 @@ var qrcode = function() {
           ]),
         ]);
       })),
+      disparador("¿Por qué no veo los datos de mis clientes?", "ventas", 0),
     );
     return conAviso(nodos);
   }
@@ -4439,7 +4469,7 @@ var qrcode = function() {
           el("span", {}, [el("b", { texto: "¿Ya es cliente?" }), el("span", { clase: "s", texto: "Búscalo por su nombre y elige su negocio" })]),
           icono('<svg class="ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>'),
         ]),
-        ...preguntaDesplegable("¿No aparece el negocio?", "Escribe la colonia o la calle junto con el nombre, por ejemplo «Tacos La Esquina Patria». Si no sale, el negocio puede no tener ficha en Google Maps."),
+        disparador("¿No aparece el negocio?", "act2", 0),
       ];
       pintar(...nodos);
       buscar.focus();
@@ -4468,16 +4498,6 @@ var qrcode = function() {
       buscar.focus();
     };
 
-    // Respuesta corta que se abre y cierra en la misma pantalla, sin cambiar de ruta.
-    const preguntaDesplegable = (titulo, respuestaTexto) => {
-      const respuesta = el("p", { clase: "hint", hidden: true, texto: respuestaTexto });
-      const pregunta = el("button", { type: "button", clase: "helpl quiet", "aria-expanded": "false", on: { click: () => {
-        const abrir = respuesta.hidden;
-        respuesta.hidden = !abrir;
-        pregunta.setAttribute("aria-expanded", String(abrir));
-      } } }, [titulo]);
-      return [pregunta, respuesta];
-    };
 
     // 3 · ¿Es este?
     const pantallaConfirmar = () => {
@@ -4493,7 +4513,7 @@ var qrcode = function() {
         el("p", { clase: "hint", texto: "El cliente ve su reseña funcionando durante 30 minutos y todavía no paga nada. Si no compra, el display queda libre y no se guarda nada." }),
         el("button", { type: "button", clase: "btn p", on: { click: () => pantallaDatos() } }, ["Ya quiere comprarlo: ir al cobro"]),
         el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => pantallaNegocio() } }, ["No es este: buscar otro"]),
-        ...preguntaDesplegable("¿Cómo sé que es la sucursal correcta?", "Lee la dirección en voz alta con el cliente. Si coincide con el local donde estás, es esa."),
+        disparador("¿Cómo sé que es la sucursal correcta?", "act3", 0),
       );
     };
 
@@ -4724,7 +4744,7 @@ var qrcode = function() {
         aviso5,
         msgCobro,
         activar,
-        ...preguntaDesplegable("¿Qué pasa si activo sin cobrar?", "Al activar te comprometes a entregar " + dinero(ENTREGA_DISPLAY) + " a Bien Visto, hayas cobrado o no. Si el cliente no pagó, ese dinero lo pones tú y no ganas la comisión de esa venta."),
+        disparador("¿Qué pasa si activo sin cobrar?", "pago", 0),
         pieVersion(),
       );
       sincronizar();
@@ -4797,7 +4817,7 @@ var qrcode = function() {
           el("b", { style: "font-size:26px", texto: dinero(ENTREGA_DISPLAY) }),
           el("span", { texto: "Entrégalo a Bien Visto desde Mi saldo." }),
         ]),
-        el("div", { clase: "tarjeta" }, [el("b", { texto: "Pruébalo tú mismo" }), el("span", { texto: "Abre el enlace de reseña para ver lo que verá tu cliente." }), el("button", { type: "button", clase: "btn s sm", style: "margin-top:10px", on: { click: () => window.open(st.negocio.enlace_resena, "_blank", "noopener") } }, ["Abrir enlace de reseña"])]),
+        el("div", { clase: "tarjeta" }, [el("b", { texto: "Pruébalo tú mismo" }), el("span", { texto: "Abre el enlace de reseña para ver lo que verá tu cliente." }), el("button", { type: "button", clase: "btn s sm", style: "margin-top:10px", on: { click: () => window.open(st.negocio.enlace_resena, "_blank", "noopener") } }, ["Abrir enlace de reseña"]), disparador("¿No se abrió la reseña?", "act4", 0, "margin:8px 0 0")]),
         el("div", { clase: "tarjeta", style: "border-left:4px solid var(--ambar)" }, [pregunta, factura]),
         el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { st.folio = null; st.ventaId = null; st.form = { nombre: "", wa: "", mail: "" }; pantallaFolio(); } } }, ["Activar otro display de este cliente"]),
         el("button", { type: "button", clase: "btn p", style: "margin-top:8px", on: { click: () => ir("#/hoy") } }, ["Terminar"]),
@@ -4949,7 +4969,7 @@ var qrcode = function() {
         ]),
         el("p", { clase: "hint", style: "margin:0 0 10px" }, [
           "Al registrarlo, avisas a tu cliente que Bien Visto usará estos datos para su display y su recibo. ",
-          el("a", { href: "https://bienvisto.com.mx/aviso-de-privacidad", target: "_blank", rel: "noopener", style: "color:var(--verde);font-weight:600" }, ["Aviso de privacidad"]),
+          disparador("Aviso de privacidad", "priv", 0, "display:inline;margin:0;padding:0;min-height:0;width:auto"),
         ]),
         el("button", { type: "button", clase: "btn s sm", style: "margin-bottom:10px", on: { click: () => pintarNegocio() } }, ["¿Ya es cliente? Búscalo"]),
         el("button", { type: "button", clase: "btn p", on: { click: siguiente } }, ["Siguiente"]),
@@ -5026,13 +5046,7 @@ var qrcode = function() {
     const pintarConfirmar = () => {
       const n = LOTE.negocio;
       const CHECK = '<svg viewBox="0 0 80 60" width="36" height="27" aria-hidden="true" style="flex:none"><path d="M14 30 L30 46 L66 10" fill="none" stroke="#0E6B5C" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      const respuesta = el("p", { clase: "hint", hidden: "", texto: "Lee la dirección en voz alta con el cliente. Si coincide con el local donde estás, es esa." });
-      const pregunta = el("button", { type: "button", clase: "helpl quiet", style: "margin:0;text-align:left", "aria-expanded": "false" }, ["¿Cómo sé que es la sucursal correcta?"]);
-      pregunta.addEventListener("click", () => {
-        const abrir = respuesta.hidden;
-        respuesta.hidden = !abrir;
-        pregunta.setAttribute("aria-expanded", String(abrir));
-      });
+      const pregunta = disparador("¿Cómo sé que es la sucursal correcta?", "act3", 0, "margin:0;text-align:left");
       caja.replaceChildren(
         el("div", { clase: "row", style: "margin-bottom:6px" }, [el("span", { clase: "chip v", texto: "Lote · negocio nuevo" })]),
         el("p", { clase: "hint", style: "margin:0 0 10px", texto: "Primero el cliente y su negocio; después tocas los displays." }),
@@ -5047,7 +5061,6 @@ var qrcode = function() {
         el("button", { type: "button", clase: "btn p", style: "margin-top:12px", on: { click: () => ir("#/lote/actual") } }, ["Continuar: elegir displays"]),
         el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { LOTE.negocio = null; pintarNegocio(); } } }, ["No es este: buscar otro"]),
         pregunta,
-        respuesta,
       );
     };
 
@@ -5268,13 +5281,7 @@ var qrcode = function() {
     const formula = t.enPromo
       ? (n % PROMO_N ? (t.enPromo / PROMO_N) + " promo × " + dinero(PROMO_PRECIO) + " + " + (n % PROMO_N) + " × " + dinero(PRECIO_DISPLAY) : (n / PROMO_N) + " × promo de " + dinero(PROMO_PRECIO)) + " · "
       : n > 1 ? n + " × " + dinero(PRECIO_DISPLAY) + " · " : "";
-    const pregunta = el("button", { type: "button", clase: "helpl quiet", style: "margin:12px 0 0;text-align:left", "aria-expanded": "false" }, ["¿Qué pasa si activo sin cobrar?"]);
-    const respuesta = el("p", { clase: "hint", hidden: "", texto: "Al activar te comprometes a entregar " + dinero(t.aEntregar) + " a Bien Visto, hayas cobrado o no. Si el cliente no pagó, ese dinero lo pones tú y no ganas la comisión de esa venta." });
-    pregunta.addEventListener("click", () => {
-      const abrir = respuesta.hidden;
-      respuesta.hidden = !abrir;
-      pregunta.setAttribute("aria-expanded", String(abrir));
-    });
+    const pregunta = disparador("¿Qué pasa si activo sin cobrar?", "pago", 0, "margin:12px 0 0;text-align:left");
 
     let zona;
     if (!transfer) {
@@ -5335,7 +5342,6 @@ var qrcode = function() {
       chkBtn,
       boton,
       pregunta,
-      respuesta,
       msg,
       pieVersion(),
     ];
@@ -5418,6 +5424,7 @@ var qrcode = function() {
           el("li", {}, ["Una venta anulada no cuenta."]),
         ]),
       ]),
+      disparador("¿Qué cuenta como display entregado?", "desempeno", 0),
       el("p", { clase: "hint", style: "text-align:center", texto: "Hoy tienes " + d.activos + " displays activos y " + d.escaneos_7d + " escaneos en 7 días." }),
     );
     return nodos;
@@ -5662,7 +5669,7 @@ var qrcode = function() {
       item("list", "Mis ventas y comisión", ok.length + (ok.length === 1 ? " venta" : " ventas"), "", "#/ventas"),
       el("div", { clase: "msep" }),
       item("book", "Manual de uso", "bienvisto.com.mx/ayuda/manual", "", "https://bienvisto.com.mx/ayuda/manual"),
-      el("button", { type: "button", clase: "mi", on: { click: () => { verAyuda = true; abrirCajon(false); render(); } } }, [svgDe("help"), el("span", { texto: "Ayuda de esta pantalla" })]),
+      el("button", { type: "button", clase: "mi", on: { click: () => { abrirCajon(false); abrirAyudaDePantalla(); } } }, [svgDe("help"), el("span", { texto: "Ayuda de esta pantalla" })]),
       item("chat", "Escribir a soporte", "Por WhatsApp", "", WA_AYUDA),
       el("div", { clase: "msep" }),
       el("button", { type: "button", clase: "mi", id: "btn-salir", on: { click: confirmarSalida } }, [svgDe("out"), el("span", { clase: "mi-cuerpo" }, [el("span", { texto: "Cerrar sesión" })])]),
@@ -5683,7 +5690,7 @@ var qrcode = function() {
     if (abrir) pintarCajon();
   }
 
-  window.addEventListener("hashchange", () => { verAyuda = false; abrirCajon(false); render(); });
+  window.addEventListener("hashchange", () => { abrirCajon(false); render(); });
   $("btn-menu").addEventListener("click", () => abrirCajon(true));
   $("cajon").addEventListener("click", (e) => { if (e.target.id === "cajon") abrirCajon(false); });
   $("btn-atras").addEventListener("click", () => { if (history.length > 1) history.back(); else ir("#/hoy"); });
