@@ -3454,22 +3454,35 @@ var qrcode = function() {
     const sincronizar = () => {
       for (const [k, b] of Object.entries(botonesMetodo)) b.setAttribute("aria-pressed", String(k === metodo));
       refBloque.hidden = metodo !== "transferencia";
+      fotoBloque.hidden = metodo !== "transferencia";
+      // La foto solo aplica a transferencia: al cambiar a efectivo se descarta.
+      if (metodo !== "transferencia") elegido(null);
     };
     const seg = el("div", { clase: "meth", role: "group", "aria-label": "Cómo entregas" }, [["efectivo", "Efectivo en mano", ICONO_EFECTIVO], ["transferencia", "Depósito o transferencia", ICONO_TRANSFERENCIA]].map(([k, t, ic]) => {
       const b = el("button", { type: "button", on: { click: () => { metodo = k; sincronizar(); } } }, [icono(ic), t]);
       botonesMetodo[k] = b;
       return b;
     }));
-    sincronizar();
-
     const textoFoto = "Sin foto. Puedes agregarla ahora o después.";
     const fotoNombre = el("p", { clase: "hint", role: "status", texto: textoFoto });
+    const fotoBloque = el("div", { hidden: "" });
     const elegido = (lista) => {
       archivo = lista && lista[0] ? lista[0] : null;
       fotoNombre.textContent = archivo ? "Comprobante listo: " + archivo.name : textoFoto;
     };
     const entradaCamara = el("input", { type: "file", accept: "image/*", capture: "environment", hidden: "", on: { change: () => elegido(entradaCamara.files) } });
     const entradaGaleria = el("input", { type: "file", accept: "image/*,application/pdf", hidden: "", on: { change: () => elegido(entradaGaleria.files) } });
+    fotoBloque.append(
+      el("span", { clase: "lbl", style: "margin-top:14px", texto: "Foto del comprobante (opcional)" }),
+      el("div", { clase: "dos" }, [
+        el("button", { type: "button", clase: "btn s", on: { click: () => entradaCamara.click() } }, ["Tomar foto"]),
+        el("button", { type: "button", clase: "btn s", on: { click: () => entradaGaleria.click() } }, ["Subir de galería"]),
+      ]),
+      fotoNombre,
+      entradaCamara,
+      entradaGaleria,
+    );
+    sincronizar();
 
     const enviar = el("button", { type: "button", clase: "btn p", on: { click: async () => {
       const monto = montoActual();
@@ -3511,14 +3524,7 @@ var qrcode = function() {
       el("span", { clase: "lbl", texto: "¿Cómo lo entregas?" }),
       seg,
       refBloque,
-      el("span", { clase: "lbl", style: "margin-top:14px", texto: "Foto del comprobante (opcional)" }),
-      el("div", { clase: "dos" }, [
-        el("button", { type: "button", clase: "btn s", on: { click: () => entradaCamara.click() } }, ["Tomar foto"]),
-        el("button", { type: "button", clase: "btn s", on: { click: () => entradaGaleria.click() } }, ["Subir de galería"]),
-      ]),
-      fotoNombre,
-      entradaCamara,
-      entradaGaleria,
+      fotoBloque,
       aviso,
       enviar,
     );
