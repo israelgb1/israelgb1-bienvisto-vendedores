@@ -3533,7 +3533,7 @@ var qrcode = function() {
   }
 
   async function pSaldo() {
-    const [s, v] = await Promise.all([getJSON("/api/vendedor/saldo"), getJSON("/api/vendedor/ventas").catch(() => null)]);
+    const [s, v, av] = await Promise.all([getJSON("/api/vendedor/saldo"), getJSON("/api/vendedor/ventas").catch(() => null), getJSON("/api/vendedor/avisos-entrega").catch(() => null)]);
     if (!s) return null;
     const cuentas = ((v && v.ventas) || []).filter((x) => x.estado !== "anulada" && x.estado !== "rechazada");
     const ganado = cuentas.reduce((a, x) => a + ((Number(x.total) || 0) - (Number(x.a_entregar) || 0)), 0);
@@ -3556,6 +3556,20 @@ var qrcode = function() {
       ]),
     ];
     if (s.impago) nodos.push(el("div", { clase: "aviso alerta", texto: "Tienes un adeudo por impago. No puedes activar displays nuevos hasta resolverlo." }));
+    // Avisos: el pendiente (en revisión) o el último rechazado, con el mensaje de Bien Visto.
+    const avisos = (av && av.avisos) || [];
+    const enRevision = avisos.find((x) => x.estado === "pendiente");
+    const rechazado = !enRevision && avisos[0] && avisos[0].estado === "rechazado" ? avisos[0] : null;
+    if (enRevision) nodos.push(el("div", { clase: "tarjeta", style: "border-color:var(--ambar);background:var(--ambar-claro)" }, [
+      el("span", { clase: "lbl", texto: "Aviso en revisión" }),
+      el("b", { texto: "Avisaste " + dinero(enRevision.monto) + " por " + (enRevision.metodo === "efectivo" ? "efectivo" : "transferencia") + "." }),
+      el("span", { texto: "Bien Visto lo está revisando. Ese dinero sigue pendiente hasta que lo confirme." }),
+    ]));
+    if (rechazado) nodos.push(el("div", { clase: "aviso alerta", role: "alert" }, [
+      el("b", { texto: "El pago de " + dinero(rechazado.monto) + " no fue reconocido por Bien Visto." }),
+      el("span", { texto: "Contáctanos para confirmarlo." }),
+      ...(rechazado.motivo ? [el("span", { texto: "Mensaje de Bien Visto: " + rechazado.motivo })] : []),
+    ]));
     nodos.push(
       el("div", { clase: "tarjeta" }, [
         el("span", { clase: "lbl", texto: "Tope de custodia" }),
@@ -3567,7 +3581,8 @@ var qrcode = function() {
         el("span", { texto: plazo }),
       ]),
     );
-    if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => abrirAvisarEntrega(custodia) } }, ["Avisar que entregué " + dinero(custodia)]));
+    if (custodia > 0 && enRevision) nodos.push(el("button", { type: "button", clase: "btn p", disabled: "", "aria-disabled": "true" }, ["Aviso en revisión · " + dinero(custodia) + " pendientes"]));
+    else if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => abrirAvisarEntrega(custodia) } }, ["Avisar que entregué " + dinero(custodia)]));
     if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => abrirDatosPago(custodia) } }, ["Datos de Bien Visto para transferir"]));
     nodos.push(
       el("h3", { clase: "sec-t", texto: "Tus ganancias" }),
