@@ -4170,6 +4170,17 @@ const AYUDA_TEXTOS={
   let PROMO_N = 3;
   let PROMO_PRECIO = 900;
   const MAX_LOTE = 50;
+  const TEXTO_CONSENT = "Acepto recibir por WhatsApp un resumen del uso de mi display cada 15 días durante 90 días, y ofertas de servicios de Bien Visto. Puedo pedir la baja en cualquier momento.";
+  // Casilla de consentimiento del seguimiento. Se marca solo si el cliente dijo que sí.
+  const casillaConsent = (valor, alCambiar) => {
+    const c = el("input", { type: "checkbox", id: "consent-seg", style: "flex:none;width:22px;height:22px;margin:2px 0 0;accent-color:#0E6B5C" });
+    c.checked = !!valor;
+    c.addEventListener("change", () => alCambiar(c.checked));
+    return el("div", { style: "margin:14px 0" }, [
+      el("label", { for: "consent-seg", style: "display:flex;gap:12px;align-items:flex-start;cursor:pointer" }, [c, el("span", { texto: TEXTO_CONSENT })]),
+      el("p", { clase: "hint", style: "margin:6px 0 0", texto: "Léeselo al cliente y marca solo si dice que sí. Sin la casilla, el display se activa igual, pero sin resúmenes." }),
+    ]);
+  };
   let COMISION_DISPLAY = 150;
   let ENTREGA_DISPLAY = PRECIO_DISPLAY - COMISION_DISPLAY;
   let preciosLeidos = 0;
@@ -4576,7 +4587,7 @@ const AYUDA_TEXTOS={
     const contenedor = el("div", {});
     const avisoGlobal = el("p", { clase: "msg", role: "status" });
     const msgProbar = el("p", { clase: "msg", role: "status" });
-    const st = { folio: null, negocio: null, cliente: null, clientes: null, form: { nombre: "", wa: "", mail: "" }, ventaId: null, pm: "efectivo", clienteNuevo: false };
+    const st = { folio: null, negocio: null, cliente: null, clientes: null, form: { nombre: "", wa: "", mail: "", consent: false }, ventaId: null, pm: "efectivo", clienteNuevo: false };
     let turnoBusqueda = 0;
     let temporizador = null;
 
@@ -4747,7 +4758,7 @@ const AYUDA_TEXTOS={
       const pintarClientes = (q) => {
         const qn = sinAcentos(q).trim();
         const r = st.clientes.filter((c) => !qn || qn.split(/\s+/).every((w) => sinAcentos(c.nombre + " " + c.empresa).includes(w)));
-        lista.replaceChildren(...r.map((c) => el("button", { type: "button", on: { click: () => { st.cliente = c; st.form = { nombre: c.nombre, wa: "", mail: "" }; pantallaNegocio(); } } }, [el("b", { texto: c.nombre }), el("span", { texto: c.empresa })])));
+        lista.replaceChildren(...r.map((c) => el("button", { type: "button", on: { click: () => { st.cliente = c; st.form = { nombre: c.nombre, wa: "", mail: "", consent: false }; pantallaNegocio(); } } }, [el("b", { texto: c.nombre }), el("span", { texto: c.empresa })])));
         if (!r.length) lista.replaceChildren(el("p", { clase: "hint", texto: "Nadie coincide. Prueba con otra palabra o regístralo como cliente nuevo." }));
       };
       const buscar = el("input", { type: "search", autocomplete: "off", placeholder: "Ej. Rosa, Ruiz o Tacos", "aria-label": "Cliente o negocio" });
@@ -4824,10 +4835,11 @@ const AYUDA_TEXTOS={
         el("p", { clase: "hint", texto: "10 dígitos: lada y número, sin +52." }),
         campo("mail", "Correo", { inputmode: "email", autocapitalize: "off", placeholder: "nombre@gmail.com" }),
         el("p", { clase: "hint", texto: "Si lo pones, el recibo también le llega por correo." }),
+        casillaConsent(st.form.consent, (v) => { st.form.consent = v; }),
         el("button", { type: "button", clase: "btn a", on: { click: () => {
           const ok = ["nombre", "wa", "mail"].map((k) => validar(k)).every(Boolean);
           if (!ok) return;
-          st.form = { nombre: campos.nombre.value.trim(), wa: campos.wa.value.trim(), mail: campos.mail.value.trim().toLowerCase() };
+          st.form = { nombre: campos.nombre.value.trim(), wa: campos.wa.value.trim(), mail: campos.mail.value.trim().toLowerCase(), consent: !!st.form.consent };
           pantallaCobro();
         } } }, ["Siguiente: cobrar " + dinero(PRECIO_DISPLAY)]),
       );
@@ -4855,7 +4867,7 @@ const AYUDA_TEXTOS={
       // Crea la venta una sola vez (pendiente); después se reutiliza para compartir o activar.
       const asegurarVenta = async (donde = msgCobro) => {
         if (st.ventaId) return true;
-        const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, correo: st.form.mail || null, metodo, direccion: st.negocio.direccion, folios: [st.folio] });
+        const crear = await postJSON("/api/vendedor/ventas", { negocio: st.negocio.nombre, contacto: st.form.nombre, whatsapp: st.form.wa, correo: st.form.mail || null, consentimiento: !!st.form.consent, metodo, direccion: st.negocio.direccion, folios: [st.folio] });
         if (crear.status === 401) return false;
         if (!(crear.status === 201 && crear.datos && crear.datos.success)) {
           texto(donde, errorDe(crear.datos), "err");
@@ -5084,7 +5096,7 @@ const AYUDA_TEXTOS={
         ]),
         el("div", { clase: "tarjeta" }, [el("b", { texto: "Pruébalo tú mismo" }), el("span", { texto: "Abre el enlace de reseña para ver lo que verá tu cliente." }), el("button", { type: "button", clase: "btn s sm", style: "margin-top:10px", on: { click: () => window.open(st.negocio.enlace_resena, "_blank", "noopener") } }, ["Abrir enlace de reseña"]), disparador("¿No se abrió la reseña?", "act4", 0, "margin:8px 0 0")]),
         el("div", { clase: "tarjeta", style: "border-left:4px solid var(--ambar)" }, [pregunta, factura]),
-        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { st.folio = null; st.ventaId = null; st.form = { nombre: "", wa: "", mail: "" }; pantallaFolio(); } } }, ["Activar otro display de este cliente"]),
+        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { st.folio = null; st.ventaId = null; st.form = { nombre: "", wa: "", mail: "", consent: false }; pantallaFolio(); } } }, ["Activar otro display de este cliente"]),
         el("button", { type: "button", clase: "btn p", style: "margin-top:8px", on: { click: () => ir("#/hoy") } }, ["Terminar"]),
       );
     };
@@ -5117,7 +5129,7 @@ const AYUDA_TEXTOS={
   // Activar varios, en pantallas como en el mockup: negocio → displays → cobro → listo.
   // El estado de la venta vive en LOTE; si se pierde (recarga), vuelve a «Varios».
   let LOTE = null;
-  const nuevoLote = (negocio) => ({ negocio, nombre: "", wa: "", mail: "", folios: [], inv: null, ventaId: null, hecho: null, metodo: "efectivo" });
+  const nuevoLote = (negocio) => ({ negocio, nombre: "", wa: "", mail: "", consent: false, folios: [], inv: null, ventaId: null, hecho: null, metodo: "efectivo" });
 
   // Mismas reglas que el escaneo y el mockup. enLista: folios ya en el lote o en la lectura en curso.
   function validarLote(f, enLista) {
@@ -5454,7 +5466,7 @@ const AYUDA_TEXTOS={
       if (LOTE.ventaId) return true;
       const e = validarCliente() || errCorreoCliente(LOTE.mail);
       if (e) { texto(donde, e, "err"); donde.scrollIntoView({ behavior: "smooth", block: "center" }); return false; }
-      const crear = await postJSON("/api/vendedor/ventas", { negocio: LOTE.negocio.nombre, contacto: LOTE.nombre.trim(), whatsapp: LOTE.wa.trim(), correo: LOTE.mail.trim().toLowerCase() || null, metodo: LOTE.metodo, direccion: LOTE.negocio.direccion, folios: LOTE.folios });
+      const crear = await postJSON("/api/vendedor/ventas", { negocio: LOTE.negocio.nombre, contacto: LOTE.nombre.trim(), whatsapp: LOTE.wa.trim(), correo: LOTE.mail.trim().toLowerCase() || null, consentimiento: !!LOTE.consent, metodo: LOTE.metodo, direccion: LOTE.negocio.direccion, folios: LOTE.folios });
       if (crear.status === 401) return false;
       if (!(crear.status === 201 && crear.datos && crear.datos.success)) { texto(donde, errorDe(crear.datos), "err"); donde.scrollIntoView({ behavior: "smooth", block: "center" }); return false; }
       LOTE.ventaId = crear.datos.id;
@@ -5601,6 +5613,7 @@ const AYUDA_TEXTOS={
         campo("WhatsApp", wa),
         campo("Correo", mail),
       ]) : el("span"),
+      LOTE.ventaId ? el("span") : casillaConsent(LOTE.consent, (v) => { LOTE.consent = v; }),
       el("span", { clase: "lbl", texto: "¿Cómo paga el cliente?" }),
       el("div", { clase: "meth", role: "group", "aria-label": "Forma de pago" }, [btnEfectivo, btnTransferencia]),
       zona,
