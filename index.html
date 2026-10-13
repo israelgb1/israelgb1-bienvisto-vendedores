@@ -3583,11 +3583,13 @@ var qrcode = function() {
     // Avisos: el pendiente (en revisión) o el último rechazado, con el mensaje de Bien Visto.
     const avisos = (av && av.avisos) || [];
     const enRevision = avisos.find((x) => x.estado === "pendiente");
+    const enRevisionMonto = Math.round(avisos.filter((x) => x.estado === "pendiente").reduce((a, x) => a + (Number(x.monto) || 0), 0) * 100) / 100;
+    const disponible = Math.round((custodia - enRevisionMonto) * 100) / 100;
     const rechazado = !enRevision && avisos[0] && avisos[0].estado === "rechazado" ? avisos[0] : null;
     if (enRevision) nodos.push(el("div", { clase: "tarjeta", style: "border-color:var(--ambar);background:var(--ambar-claro)" }, [
       el("span", { clase: "lbl", texto: "Aviso en revisión" }),
-      el("b", { texto: "Avisaste " + dinero(enRevision.monto) + " por " + (enRevision.metodo === "efectivo" ? "efectivo" : "transferencia") + "." }),
-      el("span", { texto: "Bien Visto lo está revisando. Ese dinero sigue pendiente hasta que lo confirme." }),
+      el("b", { texto: "Avisaste " + dinero(enRevisionMonto) + " en revisión." }),
+      el("span", { texto: "Bien Visto lo está revisando. Ese dinero sigue pendiente hasta que lo confirme." + (disponible > 0.001 ? " Te faltan " + dinero(disponible) + " por avisar." : "") }),
     ]));
     if (rechazado) nodos.push(el("div", { clase: "aviso alerta", role: "alert" }, [
       el("p", { style: "margin:0 0 8px;font-weight:600", texto: "El pago de " + dinero(rechazado.monto) + " no fue reconocido por Bien Visto." }),
@@ -3605,8 +3607,8 @@ var qrcode = function() {
         el("span", { texto: plazo }),
       ]),
     );
-    if (custodia > 0 && enRevision) nodos.push(el("button", { type: "button", clase: "btn p", disabled: "", "aria-disabled": "true" }, ["Aviso en revisión · " + dinero(custodia) + " pendientes"]));
-    else if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => abrirAvisarEntrega(custodia) } }, ["Avisar que entregué " + dinero(custodia)]));
+    if (disponible > 0.001) nodos.push(el("button", { type: "button", clase: "btn p", on: { click: () => abrirAvisarEntrega(disponible) } }, ["Avisar que entregué " + dinero(disponible)]));
+    else if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn p", disabled: "", "aria-disabled": "true" }, ["Aviso en revisión · " + dinero(custodia) + " pendientes"]));
     if (custodia > 0) nodos.push(el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => abrirDatosPago(custodia) } }, ["Datos de Bien Visto para transferir"]));
     nodos.push(
       el("h3", { clase: "sec-t", texto: "Tus ganancias" }),
