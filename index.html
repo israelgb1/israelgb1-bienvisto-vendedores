@@ -3467,18 +3467,36 @@ var qrcode = function() {
     const textoFoto = "Sin foto. Puedes agregarla ahora o después.";
     const fotoNombre = el("p", { clase: "hint", role: "status", texto: textoFoto });
     const fotoBloque = el("div", { hidden: "" });
+    // Vista previa: confirma que se adjuntó la imagen correcta antes de avisar.
+    const fotoImg = el("img", { alt: "Vista previa del comprobante", style: "display:block;width:100%;max-height:200px;object-fit:contain;border-radius:12px;border:1px solid var(--borde);background:#fff" });
+    const fotoPdf = el("div", { style: "display:none;padding:18px;border-radius:12px;border:1px solid var(--borde);background:#fff;text-align:center;font-weight:600", texto: "Archivo PDF listo" });
+    const fotoQuitar = el("button", { type: "button", clase: "btn s sm", style: "margin-top:8px", on: { click: () => elegido(null) } }, ["Quitar foto"]);
+    const fotoPrevia = el("div", { hidden: "" }, [fotoImg, fotoPdf, fotoQuitar]);
+    let urlPrevia = null;
     const elegido = (lista) => {
       archivo = lista && lista[0] ? lista[0] : null;
+      if (urlPrevia) { URL.revokeObjectURL(urlPrevia); urlPrevia = null; }
+      entradaCamara.value = ""; entradaGaleria.value = "";
+      if (archivo && archivo.type.startsWith("image/")) {
+        urlPrevia = URL.createObjectURL(archivo);
+        fotoImg.src = urlPrevia; fotoImg.style.display = "block"; fotoPdf.style.display = "none";
+      } else if (archivo) {
+        fotoImg.removeAttribute("src"); fotoImg.style.display = "none"; fotoPdf.style.display = "block";
+      }
+      fotoPrevia.hidden = !archivo;
       fotoNombre.textContent = archivo ? "Comprobante listo: " + archivo.name : textoFoto;
     };
-    const entradaCamara = el("input", { type: "file", accept: "image/*", capture: "environment", hidden: "", on: { change: () => elegido(entradaCamara.files) } });
-    const entradaGaleria = el("input", { type: "file", accept: "image/*,application/pdf", hidden: "", on: { change: () => elegido(entradaGaleria.files) } });
+    // Inputs fuera de pantalla (no display:none): algunos navegadores móviles no abren el selector si el input está oculto.
+    const fueraDePantalla = "position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden";
+    const entradaCamara = el("input", { type: "file", accept: "image/*", capture: "environment", style: fueraDePantalla, tabindex: "-1", "aria-hidden": "true", on: { change: () => elegido(entradaCamara.files) } });
+    const entradaGaleria = el("input", { type: "file", accept: "image/*,application/pdf", style: fueraDePantalla, tabindex: "-1", "aria-hidden": "true", on: { change: () => elegido(entradaGaleria.files) } });
     fotoBloque.append(
       el("span", { clase: "lbl", style: "margin-top:14px", texto: "Foto del comprobante (opcional)" }),
       el("div", { clase: "dos" }, [
         el("button", { type: "button", clase: "btn s", on: { click: () => entradaCamara.click() } }, ["Tomar foto"]),
         el("button", { type: "button", clase: "btn s", on: { click: () => entradaGaleria.click() } }, ["Subir de galería"]),
       ]),
+      fotoPrevia,
       fotoNombre,
       entradaCamara,
       entradaGaleria,
@@ -3497,9 +3515,15 @@ var qrcode = function() {
         if (status === 401) return;
         if (status !== 201 || !datos || !datos.success) return texto(aviso, errorDe(datos), "err");
         let comprobanteOk = true;
+        let errorFoto = "";
         if (archivo) {
-          const up = await fetch("/api/vendedor/avisos-entrega/" + enc(datos.id) + "/comprobante", { method: "POST", headers: { "Content-Type": archivo.type }, body: archivo }).catch(() => null);
+          const tipo = archivo.type || (/\.pdf$/i.test(archivo.name) ? "application/pdf" : "image/jpeg");
+          const up = await fetch("/api/vendedor/avisos-entrega/" + enc(datos.id) + "/comprobante", { method: "POST", headers: { "Content-Type": tipo }, body: archivo }).catch(() => null);
           comprobanteOk = !!(up && up.ok);
+          if (!comprobanteOk) {
+            const j = up ? await up.json().catch(() => null) : null;
+            errorFoto = (j && j.error) || "No se pudo subir la foto.";
+          }
         }
         titulo.textContent = "Aviso enviado";
         cuerpo.replaceChildren(
@@ -3507,7 +3531,7 @@ var qrcode = function() {
             el("b", { texto: "Entregas " + dinero(monto) + " por " + (metodo === "efectivo" ? "efectivo" : "transferencia") + "." }),
             el("span", { texto: "Bien Visto lo confirma y te manda el comprobante. Hasta entonces, tu saldo no cambia." }),
           ]),
-          ...(comprobanteOk ? [] : [el("div", { clase: "aviso alerta", texto: "No se pudo subir la foto del comprobante. El aviso sí quedó enviado." })]),
+          ...(comprobanteOk ? [] : [el("div", { clase: "aviso alerta", texto: errorFoto + " El aviso sí quedó enviado." })]),
           el("button", { type: "button", clase: "btn p", on: { click: () => { cerrar(); render(); } } }, ["Listo"]),
         );
       } catch (_) {
