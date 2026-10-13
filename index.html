@@ -3438,8 +3438,6 @@ const AYUDA_TEXTOS={
   async function pSolicitar([folio, tipo]) {
     const cambiar = tipo === "cambiar";
     const msg = el("p", { clase: "msg", role: "status" });
-    const nuevo = el("input", { maxlength: "200" });
-    const url = el("input", { type: "url", placeholder: "https://..." });
     const motivo = el("input", { maxlength: "200" });
     const nota = el("textarea", { maxlength: "500" });
 
@@ -3474,6 +3472,80 @@ const AYUDA_TEXTOS={
       extras.push(el("p", { clase: "hint", texto: "Como vendedor de confianza, el cambio se aplica al instante: el display empieza a llevar a las reseñas del nuevo negocio." }));
     }
 
+    // Cambio de negocio: el vendedor elige el negocio en Google y el enlace de reseña sale de esa elección.
+    let elegido = null;
+    const bloqueBusqueda = el("div", {});
+    const bloqueElegido = el("div", { hidden: "" });
+    const bloqueDatos = el("div", { hidden: "" });
+    const pintarElegido = () => {
+      bloqueBusqueda.hidden = !!elegido;
+      bloqueElegido.hidden = !elegido;
+      bloqueDatos.hidden = !elegido;
+      bloqueElegido.replaceChildren();
+      if (!elegido) return;
+      bloqueElegido.append(
+        el("span", { clase: "lbl", texto: "Nuevo negocio" }),
+        tarjetaNegocio(elegido),
+        el("div", { clase: "aviso", texto: "Quien escanee el QR o acerque su celular a " + folio + " verá Google Maps listo para dejar una reseña de este negocio. El enlace se crea solo." }),
+        el("button", { type: "button", clase: "btn s", style: "margin-top:8px", on: { click: () => { elegido = null; msg.textContent = ""; pintarElegido(); buscarIn.focus(); } } }, ["No es este: buscar otro"]),
+      );
+    };
+    const resultados = el("ul", { clase: "lista resultados" });
+    const avisoLista = (txto) => resultados.replaceChildren(el("li", {}, [el("span", { clase: "hint", texto: txto })]));
+    const pintarLista = (lista) => {
+      resultados.replaceChildren();
+      for (const r of lista) {
+        resultados.append(el("li", {}, [el("button", { type: "button", clase: "item", on: { click: () => { elegido = r; pintarElegido(); } } }, [el("b", { texto: r.nombre }), el("span", { texto: r.direccion })])]));
+      }
+    };
+    let turnoBusqueda = 0;
+    let temporizador = null;
+    const buscarNegocio = async (q) => {
+      const mi = ++turnoBusqueda;
+      avisoLista("Buscando…");
+      try {
+        const res = await fetch("/api/vendedor/buscar-negocio?q=" + enc(q));
+        if (res.status === 401) return sesionCaducada();
+        const datos = await res.json().catch(() => null);
+        if (mi !== turnoBusqueda) return;
+        if (!res.ok) return avisoLista(errorDe(datos));
+        const lista = (datos && datos.resultados) || [];
+        if (!lista.length) return avisoLista("Sin resultados. Prueba con la colonia o la calle.");
+        pintarLista(lista);
+      } catch (_) {
+        if (mi === turnoBusqueda) avisoLista(MSG_ERROR_RED);
+      }
+    };
+    const ubicar = async () => {
+      if (!navigator.geolocation) return avisoLista("Tu navegador no permite usar la ubicación. Escribe el nombre del negocio.");
+      avisoLista("Buscando negocios cerca de ti…");
+      try {
+        const pos = await new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }));
+        const res = await fetch("/api/vendedor/buscar-cercanos?lat=" + enc(String(pos.coords.latitude)) + "&lng=" + enc(String(pos.coords.longitude)));
+        if (res.status === 401) return sesionCaducada();
+        const datos = await res.json().catch(() => null);
+        if (!res.ok) return avisoLista(res.status === 404 ? "La búsqueda por ubicación todavía no está disponible. Escribe el nombre del negocio." : errorDe(datos));
+        const lista = (datos && datos.resultados) || [];
+        if (!lista.length) return avisoLista("No encontramos negocios cerca de ti. Escribe el nombre del negocio.");
+        pintarLista(lista);
+      } catch (err) {
+        avisoLista(err && err.code === 1 ? "Permite el acceso a tu ubicación en el navegador, o escribe el nombre del negocio." : "No pudimos obtener tu ubicación. Escribe el nombre del negocio.");
+      }
+    };
+    const buscarIn = el("input", { id: "bus-cambio", placeholder: "Ej. Tacos La Esquina Zapopan", maxlength: "100", autocomplete: "off", "aria-label": "Buscar el nuevo negocio en Google Maps" });
+    buscarIn.addEventListener("input", () => {
+      clearTimeout(temporizador);
+      const q = buscarIn.value.trim();
+      if (q.length < 3) { turnoBusqueda++; resultados.replaceChildren(); return; }
+      temporizador = setTimeout(() => buscarNegocio(q), 450);
+    });
+    bloqueBusqueda.append(
+      el("label", { clase: "lbl", texto: "Nuevo negocio: búscalo en Google Maps", for: "bus-cambio" }),
+      buscarIn,
+      el("button", { type: "button", clase: "btn s sm", style: "margin:12px 0 12px", on: { click: ubicar } }, ["Usar mi ubicación: negocios cerca de mí"]),
+      resultados,
+    );
+
     const etiquetaBoton = () => cambiar
       ? (conf ? "Cambiar de negocio" : "Enviar solicitud de cambio")
       : (selNuevo && selNuevo.value ? "Reponer ahora" : "Enviar solicitud de reposición");
@@ -3482,11 +3554,9 @@ const AYUDA_TEXTOS={
     const form = el("form", { novalidate: "" }, [
       el("span", { clase: "lbl", texto: "Display" }),
       el("div", { clase: "folio sm", texto: folio }),
-      ...(cambiar ? [campo("Nombre del nuevo negocio", nuevo), campo("Enlace de reseña de Google del nuevo negocio", url)] : []),
-      ...extras,
-      campo("Motivo (opcional)", motivo),
-      campo("Nota (opcional)", nota),
-      boton,
+      ...(cambiar ? [bloqueBusqueda, bloqueElegido] : []),
+      ...(cambiar ? [] : [...extras, campo("Motivo (opcional)", motivo), campo("Nota (opcional)", nota), boton]),
+      ...(cambiar ? [(bloqueDatos.append(...extras, campo("Motivo (opcional)", motivo), campo("Nota (opcional)", nota), boton), bloqueDatos)] : []),
       msg,
     ]);
     form.addEventListener("submit", async (e) => {
@@ -3494,10 +3564,9 @@ const AYUDA_TEXTOS={
       texto(msg, "", "ok");
       const cuerpo = { tipo: cambiar ? "cambiar" : "reponer", folio, motivo: motivo.value.trim(), nota: nota.value.trim() };
       if (cambiar) {
-        cuerpo.nuevo_negocio = nuevo.value.trim();
-        cuerpo.url_resena = url.value.trim();
-        if (!cuerpo.nuevo_negocio) return texto(msg, "Escribe el nombre del nuevo negocio.", "err");
-        if (!/^https:\/\//.test(cuerpo.url_resena)) return texto(msg, "El enlace debe empezar con https://", "err");
+        if (!elegido) return texto(msg, "Busca y elige el nuevo negocio en Google.", "err");
+        cuerpo.nuevo_negocio = elegido.nombre;
+        cuerpo.url_resena = elegido.enlace_resena;
       }
       if (selNuevo && selNuevo.value) cuerpo.folio_nuevo = selNuevo.value;
       boton.disabled = true;
@@ -3505,6 +3574,7 @@ const AYUDA_TEXTOS={
         const { status, datos } = await postJSON("/api/vendedor/solicitudes", cuerpo);
         if (status === 201 && datos && datos.success) {
           form.reset();
+          if (cambiar) { elegido = null; buscarIn.value = ""; resultados.replaceChildren(); pintarElegido(); }
           if (datos.directo && cambiar) texto(msg, "Listo: " + folio + " ya lleva a las reseñas de " + cuerpo.nuevo_negocio + ".", "ok");
           else if (datos.directo) texto(msg, "Listo: " + datos.folio_nuevo + " ya está activo con el mismo negocio y " + folio + " quedó retirado.", "ok");
           else if (datos.limite_usado) texto(msg, "Ya usaste tus reposiciones directas del mes. Enviamos la solicitud y Bien Visto la revisa.", "ok");
