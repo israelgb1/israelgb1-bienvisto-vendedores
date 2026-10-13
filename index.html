@@ -3425,10 +3425,11 @@ var qrcode = function() {
     // Escape cierra solo la hoja de arriba (si se abrió otra encima, no la cierra también).
     const alTeclear = (e) => { if (e.key === "Escape" && [...document.querySelectorAll(".hoja-fondo")].pop() === hoja) cerrar(); };
     const cuerpo = el("div", { clase: "hoja-cuerpo" });
+    const titulo = el("h2", { id: "hoja-aviso-t", texto: "Avisar entrega" });
     const hoja = el("div", { clase: "hoja-fondo", on: { click: (e) => { if (e.target === hoja) cerrar(); } } }, [
       el("section", { clase: "hoja", role: "dialog", "aria-modal": "true", "aria-labelledby": "hoja-aviso-t" }, [
         el("div", { clase: "hoja-top" }, [
-          el("h2", { id: "hoja-aviso-t", texto: "Avisar entrega" }),
+          titulo,
           el("button", { type: "button", clase: "btn s sm", on: { click: cerrar } }, ["Cerrar"]),
         ]),
         cuerpo,
@@ -3500,8 +3501,8 @@ var qrcode = function() {
           const up = await fetch("/api/vendedor/avisos-entrega/" + enc(datos.id) + "/comprobante", { method: "POST", headers: { "Content-Type": archivo.type }, body: archivo }).catch(() => null);
           comprobanteOk = !!(up && up.ok);
         }
+        titulo.textContent = "Aviso enviado";
         cuerpo.replaceChildren(
-          el("h2", { texto: "Aviso enviado", style: "margin:0 0 12px" }),
           el("div", { clase: "tarjeta" }, [
             el("b", { texto: "Entregas " + dinero(monto) + " por " + (metodo === "efectivo" ? "efectivo" : "transferencia") + "." }),
             el("span", { texto: "Bien Visto lo confirma y te manda el comprobante. Hasta entonces, tu saldo no cambia." }),
