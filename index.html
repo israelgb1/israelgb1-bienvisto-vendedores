@@ -3590,9 +3590,9 @@ var qrcode = function() {
       el("span", { texto: "Bien Visto lo está revisando. Ese dinero sigue pendiente hasta que lo confirme." }),
     ]));
     if (rechazado) nodos.push(el("div", { clase: "aviso alerta", role: "alert" }, [
-      el("b", { texto: "El pago de " + dinero(rechazado.monto) + " no fue reconocido por Bien Visto." }),
-      el("span", { texto: "Contáctanos para confirmarlo." }),
-      ...(rechazado.motivo ? [el("span", { texto: "Mensaje de Bien Visto: " + rechazado.motivo })] : []),
+      el("p", { style: "margin:0 0 8px;font-weight:600", texto: "El pago de " + dinero(rechazado.monto) + " no fue reconocido por Bien Visto." }),
+      el("p", { style: "margin:0 0 8px", texto: "Contáctanos para confirmarlo." }),
+      ...(rechazado.motivo ? [el("p", { style: "margin:0", texto: "Mensaje de Bien Visto: " + rechazado.motivo })] : []),
     ]));
     nodos.push(
       el("div", { clase: "tarjeta" }, [
