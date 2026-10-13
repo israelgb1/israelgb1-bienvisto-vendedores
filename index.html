@@ -5372,22 +5372,29 @@ var qrcode = function() {
         el("h2", { texto: "Tu mes", style: "margin:0" }),
         el("span", { clase: "chip", texto: "Quedan " + quedan + (quedan === 1 ? " día" : " días") }),
       ]),
-      el("div", { clase: "tarjeta", style: "margin-top:10px" }, [
+      el("div", { clase: "hero", style: "margin-top:10px" }, [
         el("span", { clase: "lbl", texto: "Displays entregados en " + mes }),
-        el("b", { texto: String(n), style: "font:600 40px/1 var(--fd)" }),
-        el("p", { clase: "hint", texto: n === 0 ? "Cuando entregues tu primer display y Bien Visto lo confirme, aparecerá aquí." : "Cada display que entregas y Bien Visto confirma suma a tu mes." }),
+        el("b", { clase: "grande", texto: String(n), style: "font:600 52px/1 var(--fd)" }),
+        el("small", { texto: n === 0 ? "Cuando entregues tu primer display y Bien Visto lo confirme, aparecerá aquí." : "Cada display que entregas y Bien Visto confirma suma a tu mes." }),
       ]),
       el("div", { clase: "tarjeta" }, [
         el("span", { clase: "lbl", texto: "Tu comisión de " + mes }),
-        el("b", { texto: dinero(n * com) }),
-        el("p", { clase: "hint", texto: n + " × " + dinero(com) + ". La retienes al cobrar: del dinero del cliente te quedas " + dinero(com) + " y entregas " + dinero(PRECIO_DISPLAY - com) + " a Bien Visto." }),
+        el("div", { style: "display:inline-block;background:var(--menta);border-radius:12px;padding:8px 14px;margin:0 0 10px" }, [
+          el("b", { texto: dinero(n * com), style: "display:block;font:600 26px/1.1 var(--fd)" }),
+          el("span", { clase: "hint", texto: n + " × " + dinero(com), style: "display:block;margin:2px 0 0" }),
+        ]),
+        el("p", { clase: "hint", style: "margin:0", texto: "La retienes al cobrar: del dinero del cliente te quedas " + dinero(com) + " y entregas " + dinero(PRECIO_DISPLAY - com) + " a Bien Visto." }),
       ]),
     ];
     if (d.sin_entregar > 0) {
       nodos.push(el("div", { clase: "tarjeta", style: "border-color:var(--ambar)" }, [
         el("span", { clase: "lbl", texto: "Te están esperando" }),
-        el("p", { clase: "hint", texto: "Tienes " + d.sin_entregar + (d.sin_entregar === 1 ? " display vendido" : " displays vendidos") + " sin entregar. Cuando entregues el dinero, cuenta" + (d.sin_entregar === 1 ? "" : "n") + " en tu mes." }),
-        el("button", { type: "button", clase: "btn p sm", on: { click: () => ir("#/saldo") } }, ["Entregar ahora"]),
+        el("p", { clase: "hint", style: "margin:0 0 12px;color:var(--tinta)" }, [
+          el("span", {}, [
+            "Tienes ", el("b", { texto: d.sin_entregar + (d.sin_entregar === 1 ? " display vendido" : " displays vendidos"), style: "display:inline" }), " sin entregar. Cuando entregues el dinero, cuenta" + (d.sin_entregar === 1 ? "" : "n") + " en tu mes.",
+          ]),
+        ]),
+        el("button", { type: "button", clase: "btn p sm", style: "border-radius:999px;margin:0", on: { click: () => ir("#/saldo") } }, ["Entregar ahora"]),
       ]));
     }
     nodos.push(
