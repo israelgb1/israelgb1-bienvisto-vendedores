@@ -3587,9 +3587,9 @@ var qrcode = function() {
     const disponible = Math.round((custodia - enRevisionMonto) * 100) / 100;
     const rechazado = !enRevision && avisos[0] && avisos[0].estado === "rechazado" ? avisos[0] : null;
     if (enRevision) nodos.push(el("div", { clase: "tarjeta", style: "border-color:var(--ambar);background:var(--ambar-claro)" }, [
-      el("span", { clase: "lbl", texto: "Aviso en revisión" }),
-      el("b", { texto: "Avisaste " + dinero(enRevisionMonto) + " en revisión." }),
-      el("span", { texto: "Bien Visto lo está revisando. Ese dinero sigue pendiente hasta que lo confirme." + (disponible > 0.001 ? " Te faltan " + dinero(disponible) + " por avisar." : "") }),
+      el("span", { clase: "lbl", texto: "En revisión" }),
+      el("b", { texto: "Avisaste " + dinero(enRevisionMonto) + ". Bien Visto lo está revisando." }),
+      el("span", { texto: "Ese monto sigue pendiente hasta que lo confirme." + (disponible > 0.001 ? " Aún te faltan " + dinero(disponible) + " por avisar." : "") }),
     ]));
     if (rechazado) nodos.push(el("div", { clase: "aviso alerta", role: "alert" }, [
       el("p", { style: "margin:0 0 8px;font-weight:600", texto: "El pago de " + dinero(rechazado.monto) + " no fue reconocido por Bien Visto." }),
